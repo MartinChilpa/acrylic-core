@@ -36,7 +36,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     # 3rd. party apps
-    'tagging',
     'django_countries',
     # project apps
     'common',
