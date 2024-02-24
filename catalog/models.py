@@ -2,7 +2,7 @@ from django.db import models
 
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
-from tagging.registry import register as register_tagging
+from taggit.managers import TaggableManager
 
 from common.models import BaseModel
 from catalog.validators import validate_isrc
@@ -31,7 +31,7 @@ class Track(BaseModel):
 
     # example USEE10001993
     isrc = models.CharField(max_length=12, validators=[validate_isrc])
-    artist = models.ForeignKey('artist.Artist', related_name='tracks')
+    artist = models.ForeignKey('artist.Artist', related_name='tracks', on_delete=models.PROTECT)
     name = models.CharField(max_length=250)
     duration = models.PositiveIntegerField(null=True) # in seconds / ms
     # total_uses
@@ -53,21 +53,20 @@ class Track(BaseModel):
     file_wav = models.FileField(upload_to=get_upload_path)
     file_mp3 = models.FileField(upload_to=get_upload_path)
 
-    genres = models.ManyToManyField('artist.Genre', related_name='tracks', blank=True)
+    genres = models.ManyToManyField('catalog.Genre', related_name='tracks', blank=True)
     additional_main_artists = models.ManyToManyField('artist.Artist', blank=True, related_name='other_tracks_main')
     featured_artists = models.ManyToManyField('artist.Artist', blank=True, related_name='other_tracks_featured')
 
-    moods
-    cultures
-    styles
-    instruments
-    season
-    similar_artists
+    tags = TaggableManager()
+    #moods
+    #cultures
+    #instruments
+    #styles
+    #season
+    #similar_artists
 
     #spotify_id (can be multiple....)
-    spot
     
-
     class Meta:
         ordering = ['-id']
         indexes = [
@@ -83,14 +82,11 @@ class Track(BaseModel):
         return [t for t in results['tracks']['items'] if t['external_ids']['isrc'] == self.isrc]
 
 
-register_tagging(Track)
-
-
 class PublishingSplit(BaseModel):
-    track = models.ForeignKey('catalog.Track', related_name='publishing_splits')
+    track = models.ForeignKey('catalog.Track', related_name='publishing_splits', on_delete=models.CASCADE)
     owner_name = models.CharField(max_length=250, blank=True)
     owner_email = models.EmailField(blank=True)
-    owner = 
+    # owner = 
     percent = models.DecimalField(max_digits=5, decimal_places=2)
 
     def __str__(self):
@@ -98,8 +94,9 @@ class PublishingSplit(BaseModel):
 
 
 class MasterSplit(BaseModel):
-    track = models.ForeignKey('catalog.Track', related_name='master_splits')
+    track = models.ForeignKey('catalog.Track', related_name='master_splits', on_delete=models.CASCADE)
     owner_name = models.CharField(max_length=250, blank=True)
+    owner_email = models.EmailField(blank=True)
     percent = models.DecimalField(max_digits=5, decimal_places=2)
 
     def __str__(self):

@@ -1,8 +1,8 @@
 from django.conf import settings
 from django.db import models
 
-from tagging.registry import register as register_tagging
 from django_countries.fields import CountryField
+from taggit.managers import TaggableManager
 
 from common.models import BaseModel
 from catalog.validators import validate_isrc
@@ -13,8 +13,8 @@ class Artist(BaseModel):
     bio = models.TextField(blank=True)
     hometown = models.CharField(max_length=250)
     country = CountryField(default='ES', blank_label='(seleccionar)')
-
     spotify_url = models.URLField(null=True, blank=True)
+    tags = TaggableManager()
 
     class Meta:
         ordering = ['-name']
@@ -26,9 +26,7 @@ class Artist(BaseModel):
         return self.name
 
 
-register_tagging(Artist)
-
 # W19 W6 tax form
 
-class Documents(BaseModel):
-    models.GenericIPAddressField(_(""), protocol="both", unpack_ipv4=False)
+#class Documents(BaseModel):
+#    models.GenericIPAddressField(_(""), protocol="both", unpack_ipv4=False)
