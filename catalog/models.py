@@ -22,7 +22,7 @@ class Genre(BaseModel):
     def save(self, *args, **kwargs):
         # Generate slug from title if not present
         if not self.code:
-            self.code = slugify(self.title)
+            self.code = slugify(self.name)
         super(BlogPost, self).save(*args, **kwargs)
 
 
