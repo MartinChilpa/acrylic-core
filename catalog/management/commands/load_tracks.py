@@ -34,6 +34,11 @@ class Command(BaseCommand):
                     'English': 'EN',
                 }
                 language = LANGS.get(row['LANGUAGE(S)'], '')
+                try:
+                    bpm = int(row['BPM']) if row['BPM'] else None
+                except ValueError:
+                    bpm = None
+
 
                 track, created = Track.objects.get_or_create(
                     isrc=row['SONG ISRC CODE'],
@@ -48,7 +53,7 @@ class Command(BaseCommand):
                         'is_instrumental': row['IS IT AN INSTRUMENTAL?'].strip().lower() == 'yes',
                         'is_explicit': row['EXPLICIT LYRICS?'].strip().lower() == 'yes',
                         'record_type': Track.RecordType.STUDIO if row['HOW WAS IT RECORDED?'].strip().lower() == 'studio' else None,
-                        'bpm': int(row['BPM']) if row['BPM'] else None,
+                        'bpm': bpm,
                         'language': language,
                         'lyrics': row['LYRICS'] if row['LYRICS'] else '',
                     }
