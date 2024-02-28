@@ -26,16 +26,27 @@ class Command(BaseCommand):
                     defaults={'hometown': row['MAIN ARTIST HOMETOWN'], 'spotify_url': row['YOUR SPOTIFY ARTIST PROFILE URL']}
                 )
 
+                song_length = None
+                if row['SONG LENGTH']:
+                    song_min, song_sec = row['SONG LENGTH'].split(':')
+                    duration = int(song_min) * 60 + int(song_sec)
+
                 track, created = Track.objects.get_or_create(
                     isrc=row['SONG ISRC CODE'],
                     defaults={
                         'artist': artist,
                         'name': row['SONG NAME'],
-                        'duration': int(float(row['SONG LENGTH']) * 60),  # Example conversion, adjust as needed
-                        'is_cover': row['IS IT A COVER OF SOMEONE ELSE\'S SONG?'].lower() == 'yes',
-                        'is_remix': row['IS IT A REMIX?'].lower() == 'yes',
-                        'is_explicit': row['EXPLICIT LYRICS?'].lower() == 'yes',
-                        # Add other fields as necessary
+                        # Assuming duration is provided in minutes:seconds format in the CSV
+                        'duration': sum(x * int(t) for x, t in zip([60, 1], row['SONG LENGTH'].split(":"))) if row['SONG LENGTH'] else None,
+                        'released': row['Submitted on'],  # Make sure to convert this to a suitable datetime format if necessary
+                        'is_cover': row['IS IT A COVER OF SOMEONE ELSE\'S SONG?'].strip().lower() == 'yes',
+                        'is_remix': row['IS IT A REMIX?'].strip().lower() == 'yes',
+                        'is_instrumental': row['IS IT AN INSTRUMENTAL?'].strip().lower() == 'yes',
+                        'is_explicit': row['EXPLICIT LYRICS?'].strip().lower() == 'yes',
+                        'record_type': Track.RecordType.STUDIO if row['HOW WAS IT RECORDED?'].strip().lower() == 'studio' else None,
+                        'bpm': int(row['BPM']) if row['BPM'] else None,
+                        'language': row['LANGUAGE(S)'] if row['LANGUAGE(S)'] else None,
+                        'lyrics': row['LYRICS'] if row['LYRICS'] else None,
                     }
                 )
                 
