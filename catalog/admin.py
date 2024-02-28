@@ -4,7 +4,7 @@ from catalog.models import Genre, Track
 
 
 @admin.register(Genre)
-class TrackAdmin(admin.ModelAdmin):
+class GenreAdmin(admin.ModelAdmin):
     list_display = ['code', 'name', 'created', 'updated']
     search_fields = ['code', 'name']
     list_filter = ['created', 'updated']
