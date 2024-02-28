@@ -33,7 +33,7 @@ class Command(BaseCommand):
                     'Spanish': 'ES',
                     'English': 'EN',
                 }
-                language = LANGS.get(row['LANGUAGE(S)'], None)
+                language = LANGS.get(row['LANGUAGE(S)'], '')
 
                 track, created = Track.objects.get_or_create(
                     isrc=row['SONG ISRC CODE'],
