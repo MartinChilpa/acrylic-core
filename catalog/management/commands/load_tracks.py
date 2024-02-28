@@ -50,7 +50,7 @@ class Command(BaseCommand):
                         'record_type': Track.RecordType.STUDIO if row['HOW WAS IT RECORDED?'].strip().lower() == 'studio' else None,
                         'bpm': int(row['BPM']) if row['BPM'] else None,
                         'language': language,
-                        'lyrics': row['LYRICS'] if row['LYRICS'] else None,
+                        'lyrics': row['LYRICS'] if row['LYRICS'] else '',
                     }
                 )
                 
