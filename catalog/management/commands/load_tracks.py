@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
 from django.db import transaction
 import csv
+from datetime import datetime
 from artist.models import Artist
 from catalog.models import Track, Genre
 from django.core.files import File
@@ -38,7 +39,7 @@ class Command(BaseCommand):
                         'name': row['SONG NAME'],
                         # Assuming duration is provided in minutes:seconds format in the CSV
                         'duration': sum(x * int(t) for x, t in zip([60, 1], row['SONG LENGTH'].split(":"))) if row['SONG LENGTH'] else None,
-                        'released': row['Submitted on'],  # Make sure to convert this to a suitable datetime format if necessary
+                        'released': datetime.strptime(row['Submitted on'], '%Y/%m/%d').date(),
                         'is_cover': row['IS IT A COVER OF SOMEONE ELSE\'S SONG?'].strip().lower() == 'yes',
                         'is_remix': row['IS IT A REMIX?'].strip().lower() == 'yes',
                         'is_instrumental': row['IS IT AN INSTRUMENTAL?'].strip().lower() == 'yes',
