@@ -23,7 +23,7 @@ class Genre(BaseModel):
         # Generate slug from title if not present
         if not self.code:
             self.code = slugify(self.name)
-        super(BlogPost, self).save(*args, **kwargs)
+        super(Genre, self).save(*args, **kwargs)
 
 
 def get_upload_path(instance, filename):
