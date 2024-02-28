@@ -38,7 +38,11 @@ class Command(BaseCommand):
                     bpm = int(row['BPM']) if row['BPM'] else None
                 except ValueError:
                     bpm = None
-
+                
+                try:
+                    duration = sum(x * int(t) for x, t in zip([60, 1], row['SONG LENGTH'].split(":"))) if row['SONG LENGTH'] else None
+                except ValueError:
+                    duration = None
 
                 track, created = Track.objects.get_or_create(
                     isrc=row['SONG ISRC CODE'],
@@ -46,7 +50,7 @@ class Command(BaseCommand):
                         'artist': artist,
                         'name': row['SONG NAME'],
                         # Assuming duration is provided in minutes:seconds format in the CSV
-                        'duration': sum(x * int(t) for x, t in zip([60, 1], row['SONG LENGTH'].split(":"))) if row['SONG LENGTH'] else None,
+                        'duration': duration,
                         'released': datetime.strptime(row['Submitted on'], '%Y/%m/%d').date(),
                         'is_cover': row['IS IT A COVER OF SOMEONE ELSE\'S SONG?'].strip().lower() == 'yes',
                         'is_remix': row['IS IT A REMIX?'].strip().lower() == 'yes',
