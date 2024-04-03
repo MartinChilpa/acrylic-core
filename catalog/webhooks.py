@@ -1,0 +1,31 @@
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
+from .models import MasterSplit
+
+
+@csrf_exempt
+@require_POST
+def hellosign_webhook(request):
+    if request.method == 'POST':
+        data = request.POST
+        event = data.get('event')
+        
+        signed_date = None
+        if event == 'signature_request_signed':
+            signature_request_id = data.get('signature_request_id')
+            signatures = data['signature_request']['signatures']
+            for signature in signatures:
+                # The signed_date might be in UNIX timestamp format
+                signed_timestamp = signature.get('signed_at')
+                if signed_timestamp:
+                    # Convert the UNIX timestamp to a datetime object
+                    signed_date = datetime.utcfromtimestamp(int(signed_timestamp))
+                    print(f"Document was signed on: {signed_date}")
+
+        if signed_date:
+            # Here you would update the MasterSplit instance with the datetime of signing
+            # This is a simplified example. You will need to map the signature_request_id to your MasterSplit instance appropriately.
+            MasterSplit.objects.filter(signature_request_id=signature_request_id).update(validated=signed_date)
+        return JsonResponse({'status': 'success'})
+    return JsonResponse({'status': 'bad request'}, status=400)

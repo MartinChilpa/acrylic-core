@@ -165,6 +165,8 @@ SPECTACULAR_SETTINGS = {
 WHITENOISE_MANIFEST_STRICT = False
 
 
+# Dropbox Sign
+DROPBOX_SIGN_API_KEY = config('DROPBOX_SIGN_API_KEY', default='')
 
 # Activate Django-Heroku.
 django_heroku.settings(locals())

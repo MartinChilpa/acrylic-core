@@ -129,6 +129,9 @@ class MasterSplit(BaseModel):
     owner_name = models.CharField(max_length=250, blank=True)
     owner_email = models.EmailField(blank=True)
     percent = models.DecimalField(max_digits=5, decimal_places=2)
+
+    # signature fields with Dropbox Sign
+    signature_request_id = models.CharField(max_length=50, blank=True)
     validated = models.DateTimeField(blank=True, null=True, default=None)
 
     def __str__(self):

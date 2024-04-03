@@ -20,7 +20,7 @@ class GenreSerializer(serializers.ModelSerializer):
 class MasterSplitSerializer(serializers.ModelSerializer):
     class Meta:
         model = MasterSplit
-        fields = ['uuid', 'owner_name', 'owner_email', 'percent', 'validated_on']
+        fields = ['uuid', 'owner_name', 'owner_email', 'percent', 'validated']
 
 
 
