@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'taggit',
     'drf_spectacular',
     'rest_framework',
+    'django_filters',
     # project apps
     'common',
     'artist',
@@ -147,6 +148,7 @@ FORCE_LOWERCASE_TAGS = True
 REST_FRAMEWORK = {
     # YOUR SETTINGS
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
 }
 
 

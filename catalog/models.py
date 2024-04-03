@@ -92,13 +92,34 @@ class Track(BaseModel):
         return [t for t in results['tracks']['items'] if t['external_ids']['isrc'] == self.isrc]
 
 
+def validate_percent(value, track_id=None):
+    """
+    Validator for the percent field to ensure all percents for a track sum up to a maximum of 100.00
+    """
+    # If track_id is not provided, try to extract it from the instance bound to the form
+    # This is useful when the validator is used in forms where the track instance is bound
+    if not track_id and 'instance' in locals():
+        track_id = instance.track_id
+
+    if track_id:
+        # Calculate the total percent for the track excluding the current instance if updating
+        total_percent = MasterSplit.objects.filter(track_id=track_id).exclude(id=instance.id).aggregate(models.Sum('percent'))['percent__sum'] or 0.0
+        
+        # Check if the total percent exceeds 100.00 when adding the new value
+        if total_percent + value > 100.00:
+            raise ValidationError('The total percent for all splits of a track cannot exceed 100.00.')
+
+
+
 class PublishingSplit(BaseModel):
     track = models.ForeignKey('catalog.Track', related_name='publishing_splits', on_delete=models.CASCADE)
     owner_name = models.CharField(max_length=250, blank=True)
     owner_email = models.EmailField(blank=True)
     # owner = 
-    percent = models.DecimalField(max_digits=5, decimal_places=2)
-
+    percent = models.DecimalField(max_digits=5, decimal_places=2, validators=[validate_percent])
+    #signed = 
+    #dropbox_sign = 
+    
     def __str__(self):
         return f'Publishing split for {self.track}'
 
@@ -108,6 +129,7 @@ class MasterSplit(BaseModel):
     owner_name = models.CharField(max_length=250, blank=True)
     owner_email = models.EmailField(blank=True)
     percent = models.DecimalField(max_digits=5, decimal_places=2)
+    validated = models.DateTimeField(blank=True, null=True, default=None)
 
     def __str__(self):
         return f'Publishing split for {self.track}'
