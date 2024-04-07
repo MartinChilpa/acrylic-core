@@ -21,6 +21,7 @@ class TrackSerializer(serializers.ModelSerializer):
     master_splits = MasterSplitSerializer(many=True, read_only=True)
     tags = TagSerializer(many=True)
     genres = GenreSerializer(many=True)
+    artist = serializers.SlugRelatedField(slug_field='uuid', read_only=True)
 
     class Meta:
         model = Track
@@ -45,10 +46,11 @@ class SyncListTrackSerializer(serializers.ModelSerializer):
 
 class SyncListSerializer(serializers.ModelSerializer):
     tracks = SyncListTrackSerializer(source='synclisttrack_set', many=True, read_only=True)
-    
+    artist = serializers.SlugRelatedField(slug_field='uuid', read_only=True)
+
     class Meta:
         model = SyncList
-        fields = ['id', 'artist', 'name', 'description', 'order', 'pinned', 'tracks']
+        fields = ['uuid', 'artist', 'name', 'description', 'order', 'pinned', 'tracks']
 
     def create(self, validated_data):
         # Ensure the SyncList is associated with the current artist.

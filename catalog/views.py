@@ -43,7 +43,7 @@ class TrackFilter(rest_filters.FilterSet):
 class TrackViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = []
     authentication_classes = []
-    queryset = Track.objects.prefetch_related('genres', 'tags')  # Adjusted from Track.active.all() to simplify the example
+    queryset = Track.objects.select_related('artist').prefetch_related('genres', 'tags')  # Adjusted from Track.active.all() to simplify the example
     lookup_field = 'uuid'
     serializer_class = TrackSerializer
     pagination_class = StandardPagination  # Ensure this is defined somewhere
@@ -84,7 +84,7 @@ class SyncListViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         sync_list_tracks_prefetch = Prefetch('synclisttrack_set', queryset=SyncListTrack.objects.select_related('track'))
-        return SyncList.objects.prefetch_related(sync_list_tracks_prefetch)
+        return SyncList.objects.select_related('artist').prefetch_related(sync_list_tracks_prefetch)
 
 
 class MySyncListViewSet(viewsets.ModelViewSet):
