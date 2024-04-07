@@ -1,20 +1,20 @@
-from django_filters import rest_framework as filters
-from rest_framework import viewsets
+from django_filters import rest_framework as rest_filters
+from rest_framework import viewsets, filters
 from taggit.models import Tag
 from catalog.models import Track, Genre
-from catalog.serializers import TrackSerializer
+from catalog.serializers import TrackSerializer, GenreSerializer
 from common.api.pagination import StandardPagination
 
 
 
-class TrackFilter(filters.FilterSet):
-    is_cover = filters.BooleanFilter()
-    is_remix = filters.BooleanFilter()
-    is_instrumental = filters.BooleanFilter()
-    is_explicit = filters.BooleanFilter()
-    released = filters.DateFilter()
-    genres = filters.ModelMultipleChoiceFilter(queryset=Genre.objects.all(), to_field_name='id', field_name='genres')
-    #tags = filters.ModelMultipleChoiceFilter(queryset=Tag.objects.all(), to_field_name='name', method='filter_tags')
+class TrackFilter(rest_filters.FilterSet):
+    is_cover = rest_filters.BooleanFilter()
+    is_remix = rest_filters.BooleanFilter()
+    is_instrumental = rest_filters.BooleanFilter()
+    is_explicit = rest_filters.BooleanFilter()
+    released = rest_filters.DateFilter()
+    genres = rest_filters.ModelMultipleChoiceFilter(queryset=Genre.objects.all(), to_field_name='code', field_name='genres')
+    #tags = rest_filters.ModelMultipleChoiceFilter(queryset=Tag.objects.all(), to_field_name='name', method='filter_tags')
 
     class Meta:
         model = Track
@@ -25,27 +25,22 @@ class TrackFilter(filters.FilterSet):
 
 
 class TrackViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = []
     queryset = Track.objects.all()  # Adjusted from Track.active.all() to simplify the example
     lookup_field = 'uuid'
     serializer_class = TrackSerializer
     pagination_class = StandardPagination  # Ensure this is defined somewhere
-    filter_backends = [filters.DjangoFilterBackend]
+    filter_backends = [rest_filters.DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = TrackFilter
+    search_fields = ['=uuid', '=isrc', '@name', '@artist__name', '=spotify_url']
+    ordering_fields = ['name', 'created', 'updated']
 
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        isrc = self.request.query_params.get('isrc', None)
-        spotify_url = self.request.query_params.get('spotify_url', None)
-        name = self.request.query_params.get('name', None)
-        artist_name = self.request.query_params.get('artist_name', None)
 
-        if isrc:
-            queryset = queryset.filter(isrc=isrc)
-        if spotify_url:
-            queryset = queryset.filter(artist__spotify_url=spotify_url)
-        if name:
-            queryset = queryset.filter(name__icontains=name)
-        if artist_name:
-            queryset = queryset.filter(artist__name__icontains=artist_name)
-
-        return queryset
+class GenreViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = []
+    queryset = Genre.objects.all()
+    serializer_class = GenreSerializer
+    pagination_class = StandardPagination
+    lookup_field = 'uuid'
+    search_fields = ['=code', '@name']
+    ordering_fields = ['name']

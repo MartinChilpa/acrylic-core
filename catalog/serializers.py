@@ -1,6 +1,7 @@
 from rest_framework import serializers
-from catalog.models import Genre, Track, MasterSplit
 from taggit.models import Tag
+from catalog.models import Genre, Track
+from legal.serializers import MasterSplitSerializer
 
 
 class TagSerializer(serializers.ModelSerializer):
@@ -14,14 +15,6 @@ class GenreSerializer(serializers.ModelSerializer):
     class Meta:
         model = Genre
         fields = ['uuid', 'name', 'code']
-
-
-
-class MasterSplitSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = MasterSplit
-        fields = ['uuid', 'owner_name', 'owner_email', 'percent', 'validated']
-
 
 
 class TrackSerializer(serializers.ModelSerializer):

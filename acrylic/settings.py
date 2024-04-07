@@ -2,6 +2,7 @@
 Django settings for acrylic project.
 """
 import os
+from datetime import timedelta
 from decouple import config
 import django_heroku
 import sentry_sdk
@@ -41,9 +42,13 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'rest_framework',
     'django_filters',
+    'social_django',  # django social auth
+    'rest_social_auth',
     # project apps
     'common',
+    'account',
     'artist',
+    'legal',
     'catalog',
 ]
 
@@ -157,6 +162,7 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': 'Acrylic Platform API',
     'VERSION': '1.0',
     'SERVE_INCLUDE_SCHEMA': True,
+    'SCHEMA_PATH_PREFIX': r'^/api/v[0-9]',
     # OTHER SETTINGS
 }
 
@@ -164,9 +170,39 @@ SPECTACULAR_SETTINGS = {
 # prevent whitenoise: prevent Django throwing an error for references of static files which don't exist
 WHITENOISE_MANIFEST_STRICT = False
 
+FRONTEND_BASE_URL = 'https://app.acrylic.la/'
+
+REST_REGISTRATION = {
+    # user profile
+    'PROFILE_SERIALIZER_CLASS': 'account.serializers.UserProfileSerializer',
+    # user registration
+    'REGISTER_SERIALIZER_CLASS': 'artist.serializers.RegisterArtistSerializer',
+    'REGISTER_OUTPUT_SERIALIZER_CLASS': 'account.serializers.UserProfileSerializer',
+
+
+    'REGISTER_VERIFICATION_URL': f'{FRONTEND_BASE_URL}verify-user/',
+    'RESET_PASSWORD_VERIFICATION_URL': f'{FRONTEND_BASE_URL}reset-password/',
+    'REGISTER_EMAIL_VERIFICATION_URL': f'{FRONTEND_BASE_URL}verify-email/',
+    'VERIFICATION_FROM_EMAIL': 'no-reply@acrylic.la',
+}
+
+# JWT auth settings
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+}
+
+
+# SSL/TLS settings
+#SECURE_SSL_REDIRECT = True
+#SESSION_COOKIE_SECURE = True
+#CSRF_COOKIE_SECURE = True
 
 # Dropbox Sign
 DROPBOX_SIGN_API_KEY = config('DROPBOX_SIGN_API_KEY', default='')
+
 
 # Activate Django-Heroku.
 django_heroku.settings(locals())

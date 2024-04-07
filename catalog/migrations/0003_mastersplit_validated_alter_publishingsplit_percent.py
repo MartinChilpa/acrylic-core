@@ -19,6 +19,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='publishingsplit',
             name='percent',
-            field=models.DecimalField(decimal_places=2, max_digits=5, validators=[catalog.models.validate_percent]),
+            field=models.DecimalField(decimal_places=2, max_digits=5),
         ),
     ]

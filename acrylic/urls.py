@@ -3,17 +3,45 @@ from django.urls import include, path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView, TokenVerifyView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework import routers
-
+from rest_registration.api import views as registration_views
 API_VERSION = 'v1'
 
-from artist.api import views as artist_views
+from artist import views as artist_views
 from catalog import views as catalog_views
+from legal import webhooks as legal_webhooks
 
 
 router = routers.DefaultRouter()
 router.register('artists', artist_views.ArtistViewSet)
 router.register('tracks', catalog_views.TrackViewSet)
+router.register('genres', catalog_views.GenreViewSet)
 
+# artist dashboard
+router.register('me-artist/tracks', artist_views.MyTrackViewSet)
+
+
+
+
+registration_urls = (
+    [
+        #path('register/', registration_views.register, name='register'),
+        #path('verify-registration/', registration_views.verify_registration, name='verify-registration'),
+
+        path('send-reset-password-link/', registration_views.send_reset_password_link, name='send-reset-password-link'),
+        path('reset-password/', registration_views.reset_password, name='reset-password'),
+
+        #path('login/', registration_views.login, name='login'),
+        #path('logout/', registration_views.logout, name='logout'),
+
+        #path('profile/', registration_views.profile, name='profile'),
+
+        path('change-password/', registration_views.change_password, name='change-password'),
+
+        #path('register-email/', registration_views.register_email, name='register-email'),
+        path('verify-email/', registration_views.verify_email, name='verify-email'),
+    ],
+    'rest_registration',
+)
 
 
 urlpatterns = [
@@ -29,18 +57,32 @@ urlpatterns = [
         path('auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
         path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
         path('auth/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
+        # API social auth
+        path('auth/', include('rest_social_auth.urls_jwt_pair')),
+        path('account/', include(registration_urls)),
+        
+        # Registration
+        #path('account/', include('rest_registration.api.urls')),
 
+        # 
+        path('artists/register/', artist_views.ArtistRegisterView.as_view(), name='artist_register_view'),
+    
+        # Artist dashboard URLs
+        
+
+        # Application
         path('', include(router.urls)),
 
-        # API social auth
-        #path('auth/social/', include('rest_framework_social_oauth2.urls')),
-        #path('auth/', include('rest_social_auth.urls_jwt_pair')),
-
+        
         # Accounts
-        #path('accounts/profile/', profile, name='profile'),
+        #path('account/profile/', profile, name='profile'),
         # Registration
-        #path('accounts/', include('rest_registration.api.urls')),
+        #path('account/', include('rest_registration.api.urls')),
     ])),
+
+    # Dropbox Sign
+    path(f'legal/webhooks/dropbox-sign/', legal_webhooks.hellosign_webhook, name='dropbox_sign_webhook'),
+
 ]
 
 

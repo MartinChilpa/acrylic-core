@@ -1,7 +1,7 @@
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
-from .models import MasterSplit
+from legal.models import MasterSplit
 
 
 @csrf_exempt

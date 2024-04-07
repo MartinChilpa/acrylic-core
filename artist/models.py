@@ -9,6 +9,8 @@ from catalog.validators import validate_isrc
 
 
 class Artist(BaseModel):
+    # user related to artist
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='artist', blank=True, null=True)
     name = models.CharField(max_length=250)
     bio = models.TextField(blank=True)
     hometown = models.CharField(max_length=250)

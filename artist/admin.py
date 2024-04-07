@@ -8,3 +8,5 @@ class ArtistAdmin(admin.ModelAdmin):
     list_display = ['name', 'created', 'updated']
     search_fields = ['name']
     list_filter= ['created', 'updated', 'country']
+    raw_id_fields = ['user']
+
