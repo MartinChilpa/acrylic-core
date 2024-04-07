@@ -19,7 +19,10 @@ class TrackFilter(rest_filters.FilterSet):
     is_explicit = rest_filters.BooleanFilter()
     released = rest_filters.DateFilter()
     genres = rest_filters.ModelMultipleChoiceFilter(queryset=Genre.objects.all(), to_field_name='code', field_name='genres')
-    #tags = rest_filters.ModelMultipleChoiceFilter(queryset=Tag.objects.all(), to_field_name='name', method='filter_tags')
+    tags = rest_filters.ModelMultipleChoiceFilter(queryset=Tag.objects.all(), to_field_name='name', method='tags_filter')
+
+    def tags_filter(self, queryset, name, value):
+        return queryset.filter(publisher__in=value) 
 
     class Meta:
         model = Track

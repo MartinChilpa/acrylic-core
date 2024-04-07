@@ -1,11 +1,13 @@
 from django.conf import settings
 from django.db.models import Count
-from rest_framework import viewsets, mixins
+from django_filters import rest_framework as rest_filters
+from rest_framework import filters, viewsets, mixins, permissions
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_registration.api.views.register import RegisterView
 from drf_spectacular.utils import extend_schema, OpenApiParameter, inline_serializer
+from taggit.models import Tag
 
 from common.api.pagination import StandardPagination
 from catalog.serializers import TrackSerializer
@@ -30,15 +32,40 @@ class MyTrackViewSet(viewsets.GenericViewSet, mixins.ListModelMixin):
         """
         user = self.request.user
         return user.artist.tracks.all()
-    
 
+
+class ArtistFilter(rest_filters.FilterSet):
+    country = rest_filters.ChoiceFilter(field_name='country', lookup_expr='exact')
+    tags = rest_filters.ModelMultipleChoiceFilter(queryset=Tag.objects.all(), to_field_name='name', method='tags_filter')
+
+    def tags_filter(self, queryset, name, value):
+        return queryset.filter(publisher__in=value) 
+
+    class Meta:
+        model = Artist
+        fields = ['country', 'tags']
+
+
+@extend_schema(
+    parameters=[
+        # Documenting search fields
+        OpenApiParameter(name='search', description='Search artists by name, bio, Spotify URL or tags', required=False, type=str),
+        # Documenting ordering fields
+        OpenApiParameter(name='ordering', description='Order by name, created, or updated', required=False, type=str),
+    ],
+)    
 class ArtistViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = []
+    authentication_classes = []
     queryset = Artist.active.all()
     lookup_field = 'uuid'
     serializer_class = ArtistSerializer
     pagination_class = StandardPagination
-    permission_classes = []
-    authentication_classes = []
+    filter_backends = [rest_filters.DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_class = ArtistFilter
+    search_fields = ['@name', '@bio', '=spotify_url', 'tags__name']
+    ordering_fields = ['name', 'created', 'updated']    
+
     
     @action(detail=True, methods=['get'])
     def tracks(self, request, uuid=None):
