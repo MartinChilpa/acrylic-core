@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.postgres',
     # 3rd. party apps
     'django_countries',
     'taggit',
@@ -155,7 +156,13 @@ REST_FRAMEWORK = {
     # YOUR SETTINGS
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
-    'DEFAULT_AUTHENTICATION_CLASSES': ['rest_framework_simplejwt.authentication.JWTAuthentication'],
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.BasicAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication'
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ]
 }
 
 
@@ -167,9 +174,11 @@ SPECTACULAR_SETTINGS = {
     'SCHEMA_PATH_PREFIX': r'^/api/v[0-9]',
     'SCHEMA_PATH_PREFIX_TRIM': True,
     'SERVERS': [
-        {'url': 'https://dev.platform.acrylic.la/api/v1/', 'description': 'Development'},
+        #{'url': 'https://dev.platform.acrylic.la/api/v1/', 'description': 'Development'},
         {'url': 'https://platform.acrylic.la/api/v1/', 'description': 'Production'},
     ]
+    #'SERVERS': [{'url': 'http://127.0.0.1:8000/api/v1/', 'description': 'Development'},]
+    
     # OTHER SETTINGS
     
 }
