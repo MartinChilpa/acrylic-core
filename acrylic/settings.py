@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'django_filters',
     'social_django',  # django social auth
     'rest_social_auth',
+    'rest_framework_simplejwt',
     # project apps
     'common',
     'account',
@@ -154,6 +155,7 @@ REST_FRAMEWORK = {
     # YOUR SETTINGS
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
+    'DEFAULT_AUTHENTICATION_CLASSES': ['rest_framework_simplejwt.authentication.JWTAuthentication'],
 }
 
 

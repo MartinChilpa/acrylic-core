@@ -14,11 +14,15 @@ class UserProfileSerializer(DefaultUserProfileSerializer):
         model = User
 
     def get_profile_serializer(self):
+        profile = user.get_profile()
+        if not profile:
+            return None
+        profile_model = profile._meta.model.__name__
         profile_mapping = {
-            'ARTIST': ArtistSerializer,
-            'BUYER': None,
+            'Artist': ArtistSerializer,
+            'Buyer': None,
         }
-        return profile_mapping[self.instance.type]
+        return profile_mapping[profile_model]
 
     def get_fields(self, *args, **kwargs):
         obj_fields = super().get_fields()

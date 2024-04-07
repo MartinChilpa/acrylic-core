@@ -56,7 +56,8 @@ urlpatterns = [
         # JWT authentication
         path('auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
         path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-        path('auth/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
+        # path('auth/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
+        
         # API social auth
         path('auth/', include('rest_social_auth.urls_jwt_pair')),
         path('account/', include(registration_urls)),
