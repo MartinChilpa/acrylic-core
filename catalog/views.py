@@ -51,7 +51,7 @@ class TrackViewSet(viewsets.ReadOnlyModelViewSet):
     pagination_class = StandardPagination  # Ensure this is defined somewhere
     filter_backends = [rest_filters.DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = TrackFilter
-    search_fields = ['=uuid', '=isrc', 'name', 'artist__name', '=spotify_url']
+    search_fields = ['=uuid', '=isrc', 'name', 'artist__name']
     ordering_fields = ['name', 'created', 'updated']
 
 

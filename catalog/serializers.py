@@ -28,8 +28,8 @@ class TrackSerializer(serializers.ModelSerializer):
         fields = [
             'uuid', 'isrc', 'artist', 'name', 'duration', 'released', 'is_cover',
             'is_remix', 'is_instrumental', 'is_explicit', 'record_type', 'bpm',
-            'language', 'lyrics', 'snippet', 'file_wav', 'file_mp3', 'genres',
-            'additional_main_artists', 'featured_artists', 'tags', 'master_splits'
+            'language', 'lyrics', 'snippet', 'genres', 'additional_main_artists',
+            'featured_artists', 'tags', 'master_splits'
         ]
 
     def get_genre_names(self, obj):
