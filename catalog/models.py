@@ -31,7 +31,7 @@ class Genre(BaseModel):
 
 
 def get_upload_path(instance, filename):
-    return f'tracks/{instance.project.uuid}/{filename}'
+    return f'tracks/{instance.uuid}/{filename}'
 
 
 class Track(BaseModel):
