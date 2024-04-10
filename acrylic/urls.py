@@ -18,7 +18,7 @@ router.register('genres', catalog_views.GenreViewSet)
 router.register('synclists', catalog_views.SyncListViewSet)
 
 # artist dashboard
-router.register('my-artist/tracks', artist_views.MyTrackViewSet)
+router.register('my-artist/tracks', catalog_views.MyTrackViewSet)
 router.register('my-artist/synclists', catalog_views.MySyncListViewSet)
 
 

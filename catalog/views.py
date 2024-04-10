@@ -8,7 +8,7 @@ from taggit.models import Tag
 from common.api.pagination import StandardPagination
 from artist.permissions import IsArtistOwner
 from catalog.models import Track, Genre, SyncList, SyncListTrack
-from catalog.serializers import TrackSerializer, GenreSerializer, SyncListSerializer, SyncListTrackSerializer
+from catalog.serializers import TrackSerializer, MyTrackSerializer, GenreSerializer, SyncListSerializer, SyncListTrackSerializer
 
 
 
@@ -45,7 +45,7 @@ class TrackFilter(rest_filters.FilterSet):
 class TrackViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = []
     authentication_classes = []
-    queryset = Track.objects.select_related('artist').prefetch_related('genres', 'tags')  # Adjusted from Track.active.all() to simplify the example
+    queryset = Track.objects.select_related('artist').prefetch_related('genres', 'tags', 'additional_main_artists', 'featured_artists')  # Adjusted from Track.active.all() to simplify the example
     lookup_field = 'uuid'
     serializer_class = TrackSerializer
     pagination_class = StandardPagination  # Ensure this is defined somewhere
@@ -53,6 +53,27 @@ class TrackViewSet(viewsets.ReadOnlyModelViewSet):
     filterset_class = TrackFilter
     search_fields = ['=uuid', '=isrc', 'name', 'artist__name']
     ordering_fields = ['name', 'created', 'updated']
+
+    
+class MyTrackViewSet(viewsets.ModelViewSet):
+    serializer_class = MyTrackSerializer
+    permission_classes = [permissions.IsAuthenticated, IsArtistOwner]
+    queryset = Track.objects.none()  # Default queryset is none, will be dynamically set in get_queryset
+    lookup_field = 'uuid'
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['name', 'isrc']
+    ordering_fields = ['released', 'name', 'created', 'updated']
+
+    def get_queryset(self):
+        user_artist = self.request.user.artist
+        return Track.objects.filter(artist=user_artist).prefetch_related('genres', 'tags', 'additional_main_artists', 'featured_artists')
+
+    def perform_create(self, serializer):
+        """
+        Automatically set the artist to the logged-in user's artist
+        when creating a new track.
+        """
+        serializer.save(artist=self.request.user.artist)
 
 
 @extend_schema(
@@ -103,6 +124,13 @@ class MySyncListViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         sync_list_tracks_prefetch = Prefetch('synclisttrack_set', queryset=SyncListTrack.objects.select_related('track'))
         return self.request.user.artist.synclists.prefetch_related(sync_list_tracks_prefetch)
+
+    def perform_create(self, serializer):
+        """
+        Automatically set the artist to the logged-in user's artist
+        when creating a new track.
+        """
+        serializer.save(artist=self.request.user.artist)
 
     @extend_schema(
         request=inline_serializer(

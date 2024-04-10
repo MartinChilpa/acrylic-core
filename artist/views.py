@@ -16,24 +16,6 @@ from artist.models import Artist
 from catalog.models import Track
 
 
-class MyTrackViewSet(viewsets.GenericViewSet, mixins.ListModelMixin):
-    """
-    A simple ViewSet for viewing items owned by the logged-in user.
-    """
-    serializer_class = TrackSerializer
-    permission_classes = [IsAuthenticated]
-    queryset = Track.objects.none()
-    lookup_field = 'uuid'
-
-    def get_queryset(self):
-        """
-        This view should return a list of all the items
-        for the currently authenticated user.
-        """
-        user = self.request.user
-        return user.artist.tracks.all()
-
-
 class ArtistFilter(rest_filters.FilterSet):
     #country = rest_filters.ChoiceFilter(field_name='country', lookup_expr='exact')
     tags = rest_filters.ModelMultipleChoiceFilter(queryset=Tag.objects.all(), to_field_name='name', method='tags_filter')
