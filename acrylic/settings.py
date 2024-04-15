@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'rest_social_auth',
     'rest_framework_simplejwt',
     'django_ses',
+    'corsheaders',
     # project apps
     'common',
     'account',
@@ -59,6 +60,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -132,7 +134,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/5.0/topics/i18n/
 
@@ -154,6 +155,16 @@ STATIC_URL = 'static/'
 MEDIA_URL = os.environ.get('MEDIA_URL', '')
 
 APPEND_SLASH = True
+
+
+# CORS
+CORS_ALLOWED_ORIGINS = [
+    'https://app.acrylic.la',
+    'https://app.acrylic.la:4200',
+    'http://app.acrylic.la:4200',
+    'http://localhost:4200',
+    'http://127.0.0.1:4200',
+]
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
@@ -267,6 +278,27 @@ SIMPLE_JWT = {
 
 # Dropbox Sign
 DROPBOX_SIGN_API_KEY = config('DROPBOX_SIGN_API_KEY', default='')
+
+
+# Social auth: Facebook configuration
+SOCIAL_AUTH_FACEBOOK_KEY = os.environ.get('SOCIAL_AUTH_FACEBOOK_KEY', '')
+SOCIAL_AUTH_FACEBOOK_SECRET = os.environ.get('SOCIAL_AUTH_FACEBOOK_SECRET', '')
+SOCIAL_AUTH_FACEBOOK_SCOPE = ['email']
+SOCIAL_AUTH_FACEBOOK_PROFILE_EXTRA_PARAMS = {
+    'fields': 'id, name, email'
+}
+
+# Social auth: Google configuration
+SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = os.environ.get('SOCIAL_AUTH_GOOGLE_OAUTH2_KEY', '')
+SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = os.environ.get('SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET', '')
+SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
+    'https://www.googleapis.com/auth/userinfo.email',
+    'https://www.googleapis.com/auth/userinfo.profile',
+]
+
+SOCIAL_AUTH_SPOTIFY_KEY = os.environ.get('SOCIAL_AUTH_SPOTIFY_KEY', '')
+SOCIAL_AUTH_SPOTIFY_SECRET = os.environ.get('SOCIAL_AUTH_SPOTIFY_SECRET', '')
+
 
 
 # Activate Django-Heroku.

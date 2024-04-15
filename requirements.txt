@@ -25,3 +25,4 @@ WeasyPrint==61.2
 django-rest-registration==0.8.3
 django-ses[events]==3.5.2
 django-storages==1.14.2
+django-cors-headers==4.3.1
