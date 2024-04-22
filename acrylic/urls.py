@@ -16,6 +16,7 @@ router = routers.DefaultRouter()
 router.register('artists', artist_views.ArtistViewSet)
 router.register('tracks', catalog_views.TrackViewSet)
 router.register('genres', catalog_views.GenreViewSet)
+router.register('distributors', catalog_views.DistributorSerializer)
 router.register('synclists', catalog_views.SyncListViewSet)
 
 # artist dashboard

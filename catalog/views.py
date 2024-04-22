@@ -8,8 +8,8 @@ from taggit.models import Tag
 from common.api.pagination import StandardPagination
 from artist.permissions import IsArtistOwner, IsTrackArtistOwner
 from legal.sign import send_signature_request_for_ownership_validation
-from catalog.models import Track, Genre, SyncList, SyncListTrack
-from catalog.serializers import TrackSerializer, MyTrackSerializer, GenreSerializer, SyncListSerializer, SyncListTrackSerializer
+from catalog.models import Distributor, Track, Genre, SyncList, SyncListTrack
+from catalog.serializers import DistributorSerializer, TrackSerializer, MyTrackSerializer, GenreSerializer, SyncListSerializer, SyncListTrackSerializer
 
 
 
@@ -105,6 +105,23 @@ class GenreViewSet(viewsets.ReadOnlyModelViewSet):
     lookup_field = 'uuid'
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['=code', 'name']
+    ordering_fields = ['name']
+
+
+@extend_schema(
+    parameters=[
+        OpenApiParameter(name='name', description='Search by name', required=False, type=str),
+    ],
+)
+class DistributorSerializer(viewsets.ReadOnlyModelViewSet):
+    permission_classes = []
+    authentication_classes = []
+    queryset = Distributor.objects.all()
+    serializer_class = DistributorSerializer
+    pagination_class = StandardPagination
+    lookup_field = 'uuid'
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['name']
     ordering_fields = ['name']
 
 

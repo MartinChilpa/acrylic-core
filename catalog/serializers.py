@@ -1,7 +1,13 @@
 from rest_framework import serializers
 from taggit.models import Tag
-from catalog.models import Genre, Track, SyncList, SyncListTrack
+from catalog.models import Distributor, Genre, Track, SyncList, SyncListTrack
 from legal.serializers import MasterSplitSerializer
+
+
+class DistributorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Distributor
+        fields = ['uuid', 'name']
 
 
 class TagSerializer(serializers.ModelSerializer):

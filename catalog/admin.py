@@ -5,9 +5,9 @@ from catalog.models import Distributor, Genre, Track, SyncList, SyncListTrack
 
 @admin.register(Distributor)
 class DistributorAdmin(admin.ModelAdmin):
-    list_display = ['name', 'contact_name', 'email', 'created', 'updated']
+    list_display = ['name', 'contact_name', 'email', 'whitelist_send', 'whitelist_email', 'created', 'updated']
     search_fields = ['name']
-    list_filter = ['created', 'updated']
+    list_filter = ['whitelist_send', 'created', 'updated']
 
 
 @admin.register(Genre)

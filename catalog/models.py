@@ -17,8 +17,11 @@ class Distributor(BaseModel):
     whitelist_email = models.EmailField(blank=True)
     whitelist_send = models.BooleanField(default=False)
 
+    class Meta:
+        ordering = ['name']
+ 
     def __str__(self):
-        return self.name 
+        return self.name
 
 
 class Genre(BaseModel):
