@@ -1,12 +1,17 @@
+from django.conf import settings
 from django.db import models
 from django.utils.text import slugify
 
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
+from storages.backends.s3 import S3Storage
 from taggit.managers import TaggableManager
 
 from common.models import BaseModel
 from catalog.validators import validate_isrc
+
+
+public_storage = S3Storage(bucket_name=settings.PUBLIC_S3_BUCKET)
 
 
 class Distributor(BaseModel):
@@ -79,11 +84,10 @@ class Track(BaseModel):
     language = models.CharField(max_length=2, choices=Language.choices, blank=True)
     lyrics = models.TextField(blank=True)
 
-    # wav
-    # mp3
-    snippet  = models.FileField(upload_to=get_upload_path)
-    file_wav = models.FileField(upload_to=get_upload_path)
-    file_mp3 = models.FileField(upload_to=get_upload_path)
+    # aduio
+    snippet  = models.FileField(upload_to=get_upload_path, blank=True)
+    file_wav = models.FileField(upload_to=get_upload_path, blank=True)
+    file_mp3 = models.FileField(upload_to=get_upload_path, blank=True)
 
     genres = models.ManyToManyField('catalog.Genre', related_name='tracks', blank=True)
     additional_main_artists = models.ManyToManyField('artist.Artist', blank=True, related_name='other_tracks_main')
@@ -114,11 +118,19 @@ class Track(BaseModel):
         return [t for t in results['tracks']['items'] if t['external_ids']['isrc'] == self.isrc]
 
 
+def get_sync_upload_path(instance, filename):
+    return f'tracks/{instance.uuid}/{filename}'
+
+
 class SyncList(BaseModel):
     artist = models.ForeignKey('artist.Artist', related_name='synclists', on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
-    # cover
+    
+    # images
+    cover_image = models.ImageField(upload_to=get_sync_upload_path, storage=public_storage, blank=True)
+    background_image = models.ImageField(upload_to=get_sync_upload_path, storage=public_storage, blank=True)
+
     order = models.PositiveIntegerField(default=0)
     pinned = models.BooleanField(default=True, help_text='Pinned in artist profile.')
     tracks = models.ManyToManyField('catalog.Track', through='catalog.SyncListTrack', related_name='synclists', blank=True)

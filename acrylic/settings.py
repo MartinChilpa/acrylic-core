@@ -207,6 +207,9 @@ STORAGES = {
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', default='')
 AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
 AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME', '')
+
+PUBLIC_S3_BUCKET = os.environ.get('PUBLIC_S3_BUCKET', '')
+
 # AWS_DEFAULT_ACL = 'private'
 AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', '')
 AWS_IS_GZIPPED = True

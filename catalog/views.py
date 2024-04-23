@@ -142,11 +142,10 @@ class SyncListViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class MySyncListViewSet(viewsets.ModelViewSet):
-    serializer_class = SyncListSerializer
     permission_classes = [permissions.IsAuthenticated, IsArtistOwner]
+    serializer_class = SyncListSerializer
     queryset = SyncList.objects.none()
     lookup_field = 'uuid'
-    serializer_class = SyncListSerializer
     pagination_class = StandardPagination
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name', 'description']

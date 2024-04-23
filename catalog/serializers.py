@@ -43,6 +43,7 @@ class TrackSerializer(serializers.ModelSerializer):
     master_splits = MasterSplitSerializer(many=True, read_only=True)
     tags = TagSerializer(many=True)
     genres = GenreSerializer(many=True)
+    distributor = serializers.SlugRelatedField(slug_field='uuid', read_only=True)
     artist = serializers.SlugRelatedField(slug_field='uuid', read_only=True)
 
     class Meta:
@@ -50,8 +51,8 @@ class TrackSerializer(serializers.ModelSerializer):
         fields = [
             'uuid', 'isrc', 'artist', 'name', 'duration', 'released', 'is_cover',
             'is_remix', 'is_instrumental', 'is_explicit', 'record_type', 'bpm',
-            'language', 'lyrics', 'snippet', 'genres', 'additional_main_artists',
-            'featured_artists', 'tags', 'master_splits'
+            'language', 'lyrics', 'distributor', 'snippet', 'genres', 
+            'additional_main_artists', 'featured_artists', 'tags', 'master_splits'
         ]
 
     def get_genre_names(self, obj):
@@ -72,7 +73,7 @@ class SyncListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SyncList
-        fields = ['uuid', 'artist', 'name', 'description', 'order', 'pinned', 'tracks']
+        fields = ['uuid', 'artist', 'name', 'cover_image', 'background_image', 'description', 'order', 'pinned', 'tracks']
 
     def create(self, validated_data):
         # Ensure the SyncList is associated with the current artist.
