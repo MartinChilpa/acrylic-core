@@ -174,6 +174,16 @@ CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:4200',
 ]
 
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "authorization",
+    "content-type",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+]
+
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
