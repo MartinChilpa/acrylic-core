@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     'artist',
     'legal',
     'catalog',
+    'chartmetric',
 ]
 
 MIDDLEWARE = [
@@ -303,7 +304,7 @@ SIMPLE_JWT = {
 DROPBOX_SIGN_API_KEY = config('DROPBOX_SIGN_API_KEY', default='')
 
 # Chartmetric API
-CHARTMETRIC_REFRESH_TOKEN = config('CHARTMETRIC_REFRESH_TOKEN', default='')
+CHARTMETRIC_REFRESH_TOKEN = config('CHARTMETRIC_REFRESH_TOKEN', default='sZBgq3RceskBkFnjc8YNDm0LUJ7swpuqk6NL4CyEYnlkL5NVpFx2WU8cGwAD7XlZ')
 
 # Spotify API
 SPOTIFY_CLIENT_ID = config('SPOTIFY_CLIENT_ID', default='')

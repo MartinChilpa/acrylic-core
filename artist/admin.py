@@ -6,7 +6,7 @@ from artist.models import Artist
 @admin.register(Artist)
 class ArtistAdmin(admin.ModelAdmin):
     list_display = ['name', 'country', 'created', 'updated', 'is_active', 'artist_links']
-    search_fields = ['name', 'bio']
+    search_fields = ['name', 'bio', 'spotify_url', 'spotify_id', 'chartmetric_id']
     list_filter= ['is_active', 'created', 'updated']
     raw_id_fields = ['user']
 
