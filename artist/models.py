@@ -76,6 +76,11 @@ class Artist(BaseModel):
     def __str__(self):
         return self.name
 
+    def get_charmetric_url(self):
+        if self.chartmetric_id:
+            return f'https://app.chartmetric.com/artist/{self.chartmetric_id}'
+        else:
+            return ''
 
 # W19 W6 tax form
 
