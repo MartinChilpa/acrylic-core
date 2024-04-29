@@ -47,14 +47,14 @@ class Artist(BaseModel):
     deezer_url = models.URLField(null=True, blank=True)
 
     # stats
-    spotify_followers = models.PositiveIntegerField(default=0)
-    spotify_popularity = models.PositiveIntegerField(default=0)
-    spotify_monthly_listeners = models.PositiveIntegerField(default=0)
+    spotify_followers = models.PositiveIntegerField(default=0, editable=False)
+    spotify_popularity = models.PositiveIntegerField(default=0, editable=False)
+    spotify_monthly_listeners = models.PositiveIntegerField(default=0, editable=False)
 
-    instagram_followers = models.PositiveIntegerField(default=0)
+    instagram_followers = models.PositiveIntegerField(default=0, editable=False)
 
-    tiktok_followers = models.PositiveIntegerField(default=0)
-    tiktok_likes = models.PositiveIntegerField(default=0)
+    tiktok_followers = models.PositiveIntegerField(default=0, editable=False)
+    tiktok_likes = models.PositiveIntegerField(default=0, editable=False)
     
     # youtube_subscribers = models.PositiveIntegerField(default=0) 
     # soundcloud_followers = models.PositiveIntegerField(default=0) 
