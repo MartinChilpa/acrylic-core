@@ -67,7 +67,7 @@ class MyTrackViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user_artist = self.request.user.artist
-        return Track.objects.filter(artist=user_artist).prefetch_related('genres', 'tags', 'additional_main_artists', 'featured_artists')
+        return Track.objects.filter(artist=user_artist).select_related('distributor', 'artist').prefetch_related('genres', 'tags', 'additional_main_artists', 'featured_artists')
 
     def perform_create(self, serializer):
         """

@@ -24,7 +24,7 @@ class GenreSerializer(serializers.ModelSerializer):
 
 class MyTrackSerializer(serializers.ModelSerializer):
     artist = serializers.SlugRelatedField(slug_field='uuid', read_only=True)
-    distributor = serializers.SlugRelatedField(slug_field='uuid', read_only=True)
+    distributor = serializers.SlugRelatedField(slug_field='uuid')
     tags = TagSerializer(many=True, required=False)
     genres = GenreSerializer(many=True, required=False)
     additional_main_artists = serializers.SlugRelatedField(slug_field='uuid', read_only=True, many=True)
