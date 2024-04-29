@@ -16,5 +16,7 @@ class ArtistAdmin(admin.ModelAdmin):
         if obj.chartmetric_id:
             html += f'<a href="{obj.get_charmetric_url()}" target="_blank">CM</a> '
         if obj.spotify_url:
-            html += f'<a href="{obj.spotify_url}" target="_blank">Spotify</a>'
+            html += f'<a href="{obj.spotify_url}" target="_blank">Spotify</a> '
+        if obj.instagram_url:
+            html += f'<a href="{obj.instagram_url}" target="_blank">IG</a>'
         return format_html(html)
