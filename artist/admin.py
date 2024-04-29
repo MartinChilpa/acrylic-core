@@ -13,7 +13,7 @@ class ArtistAdmin(admin.ModelAdmin):
     @admin.display(description='Links')
     def artist_links(self, obj):
         html = ''
-        if self.chartmetric_id:
+        if obj.chartmetric_id:
             html += f'<a href="{obj.get_charmetric_url}" target="_blank">CM</a> '
         if obj.spotfy_url:
             html += f'<a href="{obj.spotify_url}" target="_blank">Spotify</a>'
