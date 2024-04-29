@@ -18,6 +18,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='artist',
             name='chartmetric_id',
-            field=models.PositiveIntegerField(blank=True, null=True),
+            field=models.CharField(blank=True, default='', max_length=30),
         ),
     ]
