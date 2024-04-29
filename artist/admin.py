@@ -14,7 +14,7 @@ class ArtistAdmin(admin.ModelAdmin):
     def artist_links(self, obj):
         html = ''
         if obj.chartmetric_id:
-            html += f'<a href="{obj.get_charmetric_url}" target="_blank">CM</a> '
+            html += f'<a href="{obj.get_charmetric_url()}" target="_blank">CM</a> '
         if obj.spotify_url:
             html += f'<a href="{obj.spotify_url}" target="_blank">Spotify</a>'
         return format_html(html)
