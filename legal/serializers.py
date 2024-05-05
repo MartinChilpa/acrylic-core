@@ -10,7 +10,7 @@ class MasterSplitSerializer(serializers.ModelSerializer):
 
 class PublishingSplitSerializer(serializers.ModelSerializer):
     class Meta:
-        model = MasterSplit
+        model = PublishingSplit
         fields = ['uuid', 'role', 'name', 'legal_name', 'email', 'percent', 'signed', 'pro_name', 'ipi']
 
 
@@ -21,7 +21,7 @@ class SplitSheetSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SplitSheet
-        fields = ['track', 'track_name', 'signed', 'signature_request_id', 'created', 'updated']
+        fields = ['track', 'track_name', 'signed', 'signature_request_id', 'created', 'updated', 'publishing_splits', 'master_splits']
 
     def create(self, validated_data):
         publishing_splits_data = validated_data.pop('publishing_splits', [])
