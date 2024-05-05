@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     'common',
     'account',
     'artist',
+    'content',
     'legal',
     'catalog',
     'chartmetric',

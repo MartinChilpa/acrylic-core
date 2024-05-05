@@ -8,6 +8,7 @@ API_VERSION = 'v1'
 
 from artist import views as artist_views
 from catalog import views as catalog_views
+from content import views as content_views
 from legal import views as legal_views
 from legal import webhooks as legal_webhooks
 
@@ -16,8 +17,10 @@ router = routers.DefaultRouter()
 router.register('artists', artist_views.ArtistViewSet)
 router.register('tracks', catalog_views.TrackViewSet)
 router.register('genres', catalog_views.GenreViewSet)
+#router.register('distributors', catalog_views.DistributorViewSet)
 router.register('distributors', catalog_views.DistributorSerializer)
 router.register('synclists', catalog_views.SyncListViewSet)
+router.register('articles', content_views.ArticleViewSet)
 
 # artist dashboard
 router.register('my-artist', artist_views.MyArtistViewSet)
