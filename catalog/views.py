@@ -237,7 +237,6 @@ class MySyncListViewSet(viewsets.ModelViewSet):
                         name='TrackData',
                         fields={
                             'track_uuid': serializers.UUIDField(format='hex_verbose'),
-                            'order': serializers.IntegerField(required=False)
                         }
                     )
                 )
@@ -248,42 +247,32 @@ class MySyncListViewSet(viewsets.ModelViewSet):
         description="Remove a track or multiple tracks from a SyncList.",
         examples=[
             OpenApiExample(
-                name="Example payload for a single track",
-                description="This is an example payload for removing a single track from a SyncList.",
-                value={"track_uuid": "uuid-of-track-1"},
-                request_only=True,
-            ),
-            OpenApiExample(
                 name="Example payload for multiple tracks",
-                description="This is an example payload for removing multiple tracks from a SyncList.",
-                value={"track_uuid": ["uuid-of-track-1", "uuid-of-track-2"]},
+                description="This is an example payload for removing tracks from a SyncList.",
+                 value=[
+                    {"track_uuid": "uuid-of-track-1"},
+                    {"track_uuid": "uuid-of-track-2"},
+                ],
                 request_only=True,
             ),
         ]
     )
-    @action(detail=True, methods=['post'], url_path='remove-track')
-    def remove_track(self, request, uuid=None):
+    @action(detail=True, methods=['post'], url_path='remove-tracks')
+    def remove_tracks(self, request, uuid=None):
         try:
             synclist = self.get_synclist_object(uuid)
         except SyncList.DoesNotExist:
             return Response({'detail': 'SyncList not found'}, status=status.HTTP_404_NOT_FOUND)
         
-        track_uuid = request.data.get('track_uuid')
+        tracks_data = request.data.get('tracks', [])
 
-        if not track_uuid:
-            return Response({"detail": "Track ID is required."}, status=status.HTTP_400_BAD_REQUEST)
+        if not isinstance(tracks_data, list) or not tracks_data:
+            return Response({"detail": "Tracks data must be a non-empty list."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # For removing multiple tracks, expect track_id to be a list and iterate.
-        if isinstance(track_id, list):
-            count = 0
-            for tuuid in track_uuid:
-                count += SyncListTrack.objects.filter(synclist=synclist, track__uuid=tuuid).delete()[0]
-            message = f"{count} tracks removed successfully." if count else "No tracks found to remove."
-            return Response({"detail": message}, status=status.HTTP_204_NO_CONTENT)
-
-        # For a single track removal
-        deleted, _ = SyncListTrack.objects.filter(synclist=synclist, track__uuid=track_uuid).delete()
-        if deleted:
-            return Response({"detail": "Track removed successfully."}, status=status.HTTP_204_NO_CONTENT)
-        else:
-            return Response({"detail": "Track not found in the SyncList."}, status=status.HTTP_404_NOT_FOUND)
+        count = 0
+        for track_data in tracks_data:
+            track_uuid = track_data.get('track_uuid')
+            count += SyncListTrack.objects.filter(synclist=synclist, track__uuid=tuuid).delete()[0]
+               
+        message = f"{count} tracks removed successfully." if count else "No tracks found to remove."
+        return Response({"detail": message}, status=status.HTTP_204_NO_CONTENT)
