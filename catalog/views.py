@@ -113,7 +113,7 @@ class GenreViewSet(viewsets.ReadOnlyModelViewSet):
         OpenApiParameter(name='name', description='Search by name', required=False, type=str),
     ],
 )
-class DistributorSerializer(viewsets.ReadOnlyModelViewSet):
+class DistributorViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = []
     authentication_classes = []
     queryset = Distributor.objects.all()

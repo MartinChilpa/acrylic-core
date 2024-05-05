@@ -1,7 +1,7 @@
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
-from legal.models import MasterSplit
+from legal.models import SplitSheet
 
 
 @csrf_exempt
@@ -26,6 +26,6 @@ def hellosign_webhook(request):
         if signed_date:
             # Here you would update the MasterSplit instance with the datetime of signing
             # This is a simplified example. You will need to map the signature_request_id to your MasterSplit instance appropriately.
-            MasterSplit.objects.filter(signature_request_id=signature_request_id).update(validated=signed_date)
+            SplitSheet.objects.filter(signature_request_id=signature_request_id).update(signed=signed_date)
         return JsonResponse({'status': 'success'})
     return JsonResponse({'status': 'bad request'}, status=400)

@@ -9,6 +9,7 @@ def get_sync_upload_path(instance, filename):
 
 class Article(BaseModel):
     title = models.CharField(max_length=250)
+    summary = models.TextField(blank=True)
     image = models.ImageField(upload_to=get_sync_upload_path, storage=public_storage)
     link_text = models.CharField(max_length=250)
     url = models.URLField()

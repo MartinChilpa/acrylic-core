@@ -57,7 +57,7 @@ class Track(BaseModel):
         STUDIO = 'STUDIO', 'Studio'
 
     class Language(models.TextChoices):
-        EN = 'EN', 'Enlgish'
+        EN = 'EN', 'English'
         ES = 'ES', 'Spanish'
 
     # example USEE10001993
@@ -137,6 +137,9 @@ class Track(BaseModel):
         else:
             print(f'{self.name}, {self.artist.name} - ISRC {self.isrc} No track ID found')
         self.save()
+
+    def get_latest_signed_splitsheet(self):
+        return self.split_sheets.exclude(signed=None).order_by('-signed')
 
 
 def get_sync_upload_path(instance, filename):
