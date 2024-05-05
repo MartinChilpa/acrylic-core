@@ -16,13 +16,20 @@ class PublishingSplitSerializer(serializers.ModelSerializer):
 
 
 class SplitSheetSerializer(serializers.ModelSerializer):
-    track = serializers.SlugRelatedField(slug_field='uuid', read_only=True)
+    track = serializers.SlugRelatedField(slug_field='uuid')
     publishing_splits = PublishingSplitSerializer(many=True, required=False)
     master_splits = MasterSplitSerializer(many=True, required=False)
 
     class Meta:
         model = SplitSheet
         fields = ['track', 'track_name', 'signed', 'signature_request_id', 'created', 'updated', 'publishing_splits', 'master_splits']
+
+    def validate_track(self, value):
+        user = self.context['request'].user
+        artist = user.artist
+        if value.artist != artist:
+            raise serializers.ValidationError("The track does not belong to the requesting user's artist.")
+        return value
 
     def create(self, validated_data):
         publishing_splits_data = validated_data.pop('publishing_splits', [])
