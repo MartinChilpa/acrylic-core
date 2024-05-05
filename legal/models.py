@@ -45,7 +45,7 @@ class PublishingSplit(BaseSplitModel):
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.SONGWRITER)
 
     def __str__(self):
-        return f'Publishing split for {self.track}'
+        return f'Publishing split for {self.split_sheet}'
 
 
 class MasterSplit(BaseSplitModel):
@@ -59,4 +59,4 @@ class MasterSplit(BaseSplitModel):
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.ARTIST)
 
     def __str__(self):
-        return f'Publishing split for {self.track}'
+        return f'Publishing split for {self.split_sheet}'
