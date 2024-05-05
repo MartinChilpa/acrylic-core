@@ -234,7 +234,7 @@ class MySyncListViewSet(viewsets.ModelViewSet):
             fields={
                 'tracks': serializers.ListField(
                     child=inline_serializer(
-                        name='TrackData',
+                        name='RemoveTrackData',
                         fields={
                             'track_uuid': serializers.UUIDField(format='hex_verbose'),
                         }
@@ -272,7 +272,7 @@ class MySyncListViewSet(viewsets.ModelViewSet):
         count = 0
         for track_data in tracks_data:
             track_uuid = track_data.get('track_uuid')
-            count += SyncListTrack.objects.filter(synclist=synclist, track__uuid=tuuid).delete()[0]
+            count += SyncListTrack.objects.filter(synclist=synclist, track__uuid=track_uuid).delete()[0]
                
         message = f"{count} tracks removed successfully." if count else "No tracks found to remove."
         return Response({"detail": message}, status=status.HTTP_204_NO_CONTENT)
