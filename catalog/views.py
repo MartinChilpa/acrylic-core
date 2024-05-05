@@ -3,6 +3,7 @@ from django.shortcuts import get_object_or_404
 from django_filters import rest_framework as rest_filters
 from rest_framework import viewsets, filters, permissions, status, serializers
 from rest_framework.decorators import action
+from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, inline_serializer
 from taggit.models import Tag
 from common.api.pagination import StandardPagination
@@ -155,6 +156,13 @@ class MySyncListViewSet(viewsets.ModelViewSet):
         sync_list_tracks_prefetch = Prefetch('synclisttrack_set', queryset=SyncListTrack.objects.select_related('track'))
         return self.request.user.artist.synclists.prefetch_related(sync_list_tracks_prefetch)
 
+    def get_synclist_object(self, uuid):
+        qs = self.get_queryset()
+        try:
+            return qs.get(uuid=uuid)
+        except SyncList.DoesNotExist:
+            raise SyncList.DoesNotExist
+
     def perform_create(self, serializer):
         """
         Automatically set the artist to the logged-in user's artist
@@ -193,8 +201,12 @@ class MySyncListViewSet(viewsets.ModelViewSet):
         ]
     )
     @action(detail=True, methods=['post'], url_path='add-tracks')
-    def add_tracks(self, request, pk=None):
-        synclist = self.get_object()
+    def add_tracks(self, request, uuid=None):
+        try:
+            synclist = self.get_synclist_object(uuid)
+        except SyncList.DoesNotExist:
+            return Response({'detail': 'SyncList not found'}, status=status.HTTP_404_NOT_FOUND)
+
         tracks_data = request.data.get('tracks', [])
 
         if not isinstance(tracks_data, list) or not tracks_data:
@@ -250,8 +262,12 @@ class MySyncListViewSet(viewsets.ModelViewSet):
         ]
     )
     @action(detail=True, methods=['post'], url_path='remove-track')
-    def remove_track(self, request, pk=None):
-        synclist = self.get_object()
+    def remove_track(self, request, uuid=None):
+        try:
+            synclist = self.get_synclist_object(uuid)
+        except SyncList.DoesNotExist:
+            return Response({'detail': 'SyncList not found'}, status=status.HTTP_404_NOT_FOUND)
+        
         track_uuid = request.data.get('track_uuid')
 
         if not track_uuid:
