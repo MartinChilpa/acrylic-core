@@ -25,7 +25,7 @@ class TrackAdmin(admin.ModelAdmin):
     list_display = ['isrc', 'name', 'artist_link', 'distributor', 'duration', 'released', 'is_cover', 
                     'is_remix', 'is_instrumental', 'is_explicit', 'created', 'updated']
     list_filter = ['released', 'distributor', 'is_remix', 'is_cover', 'is_instrumental', 'created', 'updated']
-    search_fields = ['name', 'duration', 'artist__name']
+    search_fields = ['uuid', 'isrc', 'name', 'duration', 'artist__name']
     raw_id_fields = ['artist']
     filter_horizontal = ['genres', 'additional_main_artists', 'featured_artists']
 
@@ -45,7 +45,7 @@ class SyncListTrackInline(admin.TabularInline):
 class SyncListAdmin(admin.ModelAdmin):
     list_display = ['uuid', 'name', 'artist', 'order', 'tracks_count', 'pinned', 'created', 'updated']
     list_filter = ['pinned', 'created', 'updated']
-    search_fields = ['name', 'description', 'artist__name']
+    search_fields = ['uuid', 'name', 'description', 'artist__name']
     raw_id_fields = ['artist']
     inlines = [SyncListTrackInline]
 
