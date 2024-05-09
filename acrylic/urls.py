@@ -19,6 +19,7 @@ router.register('tracks', catalog_views.TrackViewSet)
 router.register('genres', catalog_views.GenreViewSet)
 router.register('distributors', catalog_views.DistributorViewSet)
 router.register('synclists', catalog_views.SyncListViewSet)
+router.register('prices', catalog_views.PriceSerializer)
 router.register('articles', content_views.ArticleViewSet)
 
 # artist account

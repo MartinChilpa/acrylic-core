@@ -54,10 +54,17 @@ def get_upload_path(instance, filename):
 class Price(BaseModel):
     name = models.CharField(max_length=150)
     description = models.TextField(blank=True)
-    amount = models.DecimalField(max_digits=8, decimal_places=2)
+    single_use_price = models.DecimalField(max_digits=8, decimal_places=2)
     max_artist_tracks = models.PositiveIntegerField('Max tracks per artist', default=0, help_text='Use 0 for unlimited')
     default = models.BooleanField(default=False)
     active = models.BooleanField(default=False)
+    order = models.PositiveBigIntegerField(default=0)
+    
+    class Meta:
+        ordering = ['order']
+        indexes = [
+            models.Index(fields=['order']),
+        ]
 
     def get_available_slots(self, artist):
         if self.max_artist_tracks > 0:

@@ -22,6 +22,12 @@ class GenreSerializer(serializers.ModelSerializer):
         fields = ['uuid', 'name', 'code']
 
 
+class PriceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Genre
+        fields = ['uuid', 'name', 'description', 'single_use_price', 'max_artist_tracks', 'default', 'active', 'order']
+
+
 class MyTrackSerializer(serializers.ModelSerializer):
     artist = serializers.SlugRelatedField(slug_field='uuid', read_only=True)
     distributor = serializers.SlugRelatedField(slug_field='uuid', queryset=Distributor.objects.all())

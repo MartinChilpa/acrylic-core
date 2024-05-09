@@ -9,8 +9,8 @@ from taggit.models import Tag
 from common.api.pagination import StandardPagination
 from artist.permissions import IsArtistOwner, IsTrackArtistOwner
 from legal.sign import send_signature_request_for_ownership_validation
-from catalog.models import Distributor, Track, Genre, SyncList, SyncListTrack
-from catalog.serializers import DistributorSerializer, TrackSerializer, MyTrackSerializer, GenreSerializer, SyncListSerializer, SyncListTrackSerializer
+from catalog.models import Distributor, Track, Genre, Price, SyncList, SyncListTrack
+from catalog.serializers import DistributorSerializer, TrackSerializer, MyTrackSerializer, GenreSerializer, SyncListSerializer, SyncListTrackSerializer, PriceSerializer
 
 
 
@@ -107,6 +107,15 @@ class GenreViewSet(viewsets.ReadOnlyModelViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['=code', 'name']
     ordering_fields = ['name']
+
+
+class PriceSerializer(viewsets.ReadOnlyModelViewSet):
+    permission_classes = []
+    authentication_classes = []
+    queryset = Price.objects.all()
+    serializer_class = PriceSerializer
+    pagination_class = StandardPagination
+    lookup_field = 'uuid'
 
 
 @extend_schema(
