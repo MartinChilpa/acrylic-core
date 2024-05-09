@@ -21,7 +21,7 @@ class GenreAdmin(admin.ModelAdmin):
 
 @admin.register(Price)
 class PriceAdmin(admin.ModelAdmin):
-    list_display = ['name', 'single_use_price', 'max_artist_tracks', 'default', 'active']
+    list_display = ['name', 'single_use_price', 'max_artist_tracks', 'default', 'active', 'order']
 
 
 @admin.register(Track)

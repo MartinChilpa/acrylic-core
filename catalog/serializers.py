@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from taggit.models import Tag
-from catalog.models import Distributor, Genre, Track, SyncList, SyncListTrack
+from catalog.models import Distributor, Genre, Price, Track, SyncList, SyncListTrack
 from legal.serializers import MasterSplitSerializer
 
 
@@ -24,7 +24,7 @@ class GenreSerializer(serializers.ModelSerializer):
 
 class PriceSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Genre
+        model = Price
         fields = ['uuid', 'name', 'description', 'single_use_price', 'max_artist_tracks', 'default', 'active', 'order']
 
 
