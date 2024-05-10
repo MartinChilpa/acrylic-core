@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.db.models import Q
 
 from django_countries.fields import CountryField
 from taggit.managers import TaggableManager
@@ -17,10 +18,11 @@ class Artist(BaseModel):
     # user related to artist
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='artist', blank=True, null=True)
     name = models.CharField(max_length=250)
+    slug = models.SlugField(max_length=100, blank=True) # slug for artist URL
     bio = models.TextField(blank=True)
     hometown = models.CharField(max_length=250)
     country = CountryField(default='ES', blank_label='(seleccionar)')
-    
+
     # images
     image = models.ImageField(upload_to=get_aritst_upload_path, storage=public_storage, blank=True)
     background_image = models.ImageField(upload_to=get_aritst_upload_path, storage=public_storage, blank=True)
@@ -76,7 +78,14 @@ class Artist(BaseModel):
             models.Index(fields=['-spotify_followers']),
             models.Index(fields=['-instagram_followers']),
         ]
-    
+        constraints = [
+            models.UniqueConstraint(
+                fields=['slug'], 
+                name='unique_slug',
+                condition=~Q(slug='')
+            )
+        ]
+
     def __str__(self):
         return self.name
 
@@ -85,6 +94,9 @@ class Artist(BaseModel):
             return f'https://app.chartmetric.com/artist/{self.chartmetric_id}'
         else:
             return ''
+    
+    def get_public_url(self):
+        return f'{settings.ARTIST_PROFILE_BASE_URL}{self.slug}/'
 
 # W19 W6 tax form
 

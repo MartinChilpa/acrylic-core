@@ -21,6 +21,7 @@ class ArtistFilter(rest_filters.FilterSet):
     #country = rest_filters.ChoiceFilter(field_name='country', lookup_expr='exact')
     tags = rest_filters.ModelMultipleChoiceFilter(queryset=Tag.objects.all(), to_field_name='name', method='tags_filter')
 
+
     def tags_filter(self, queryset, name, value):
         if value:
             return queryset.filter(tags__in=value) 
@@ -28,8 +29,10 @@ class ArtistFilter(rest_filters.FilterSet):
 
     class Meta:
         model = Artist
-        fields = ['tags']
-
+        fields = {
+            'slug': ['exact'],
+            'tags': ['exact'],
+        }
 
 #@extend_schema(
 #    parameters=[
@@ -42,15 +45,14 @@ class ArtistFilter(rest_filters.FilterSet):
 class ArtistViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = []
     authentication_classes = []
-    queryset = Artist.active.all()
     lookup_field = 'uuid'
+    queryset = Artist.active.all()
     serializer_class = ArtistSerializer
     pagination_class = StandardPagination
     filter_backends = [rest_filters.DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = ArtistFilter
-    search_fields = ['name', 'bio', '=spotify_url', 'tags__name']
-    ordering_fields = ['name', 'created', 'updated']    
-
+    search_fields = ['name', 'slug', 'bio', '=spotify_url', 'tags__name']
+    ordering_fields = ['name', 'created', 'updated']
     
     @action(detail=True, methods=['get'])
     def tracks(self, request, uuid=None):

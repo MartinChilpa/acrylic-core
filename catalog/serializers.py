@@ -38,7 +38,8 @@ class MyTrackSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Track
-        fields = '__all__'  # Lists all fields from the Track model. Adjust as needed.
+        # fields = '__all__'  # Lists all fields from the Track model. Adjust as needed.
+        exclude = ['id']
         extra_kwargs = {
             'file_mp3': {'required': False},
             'file_wav': {'required': False},
@@ -53,6 +54,7 @@ class TrackSerializer(serializers.ModelSerializer):
     master_splits = MasterSplitSerializer(many=True, read_only=True)
     tags = TagSerializer(many=True)
     genres = GenreSerializer(many=True)
+    price = serializers.SlugRelatedField(slug_field='uuid', read_only=True)
 
     class Meta:
         model = Track
@@ -60,7 +62,8 @@ class TrackSerializer(serializers.ModelSerializer):
             'uuid', 'isrc', 'artist', 'name', 'duration', 'released', 'is_cover',
             'is_remix', 'is_instrumental', 'is_explicit', 'record_type', 'bpm',
             'language', 'lyrics', 'distributor', 'snippet', 'genres', 
-            'additional_main_artists', 'featured_artists', 'tags', 'master_splits'
+            'additional_main_artists', 'featured_artists', 'tags', 'master_splits',
+            'price',
         ]
 
     def get_genre_names(self, obj):

@@ -332,6 +332,7 @@ SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
     'https://www.googleapis.com/auth/userinfo.profile',
 ]
 
+ARTIST_PROFILE_BASE_URL = os.environ.get('ARTIST_PROFILE_BASE_URL', 'https://acrylic.la/artists/')
 
 # Activate Django-Heroku.
 django_heroku.settings(locals())
