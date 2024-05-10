@@ -149,7 +149,7 @@ class Track(BaseModel):
         return self.name
     
 
-    def save(self):
+    def save(self, *args, **kwargs):
         super(Track, self).save(*args, **kwargs)
         # async task to load charmetric ids
         load_chartmetric_ids.delay(self.id)
