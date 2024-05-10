@@ -195,10 +195,8 @@ class SyncList(BaseModel):
     def get_genres(self):
         # return genres
         track_ids = self.tracks.values_list('id', flat=True)
-        return Genre.objects.filter(tracks__in=track_ids).annotate(
-            num_times=Count('taggit_taggeditem_items')
-        ).order_by('-num_times')
-    
+        return Genre.objects.filter(tracks__in=track_ids)
+
     def get_tags(self):
         track_ids = self.tracks.values_list('id', flat=True)
         tagged_item_ids = TaggedItem.objects.filter(
