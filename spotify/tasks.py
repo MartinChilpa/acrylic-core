@@ -1,10 +1,8 @@
 
 import celery
-import spotipy
-from spotipy.oauth2 import SpotifyClientCredentials
 from django.apps import apps
 from acrylic.celery import app
-
+from spotify.engine import spotify_client
 
 @app.task 
 def load_spotify_id(track_id, force=False):
@@ -17,7 +15,7 @@ def load_spotify_id(track_id, force=False):
         pass
     else:
         if force == True or track.spotify_id == '':
-            spotify = spotipy.Spotify(auth_manager=SpotifyClientCredentials())
+            spotify = spotify_client()
             results = spotify.search(q=f'isrc:{track.isrc}', type='track')
             tracks = [t for t in results['tracks']['items'] if t['external_ids']['isrc'] == track.isrc]
             if len(tracks) > 0:
@@ -32,3 +30,4 @@ def load_spotify_id(track_id, force=False):
             else:
                 print(f'{track.name}, {track.artist.name} - ISRC {track.isrc} No track ID found')
             track.save()
+    return True

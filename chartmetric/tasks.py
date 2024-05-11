@@ -25,6 +25,7 @@ def load_chartmetric_ids(track_id):
                 artist.save()
                 print(f'Artist: {artist.chartmetric_id}')
             track.save()
+    return True
 
 
 @app.task
@@ -65,3 +66,5 @@ def load_chartmetric_stats(artist_id):
                 artist.instagram_followers = stats['instagram']['followers'][0]['value']
             
             artist.save()
+
+    return True
