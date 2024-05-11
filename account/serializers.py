@@ -3,6 +3,7 @@ from rest_framework import serializers, fields
 from rest_registration.api.serializers import DefaultUserProfileSerializer, DefaultRegisterUserSerializer
 from django.contrib.auth import get_user_model
 from artist.models import Artist
+from account.models import Account
 
 
 User = get_user_model()
