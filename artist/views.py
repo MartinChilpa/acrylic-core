@@ -6,13 +6,12 @@ from rest_framework import filters, viewsets, mixins, permissions, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
-from rest_registration.api.views.register import RegisterView
 from drf_spectacular.utils import extend_schema, OpenApiParameter, inline_serializer
 from taggit.models import Tag
 from artist.permissions import IsArtistOwner
 from common.api.pagination import StandardPagination
 from catalog.serializers import TrackSerializer
-from artist.serializers import ArtistSerializer, RegisterArtistSerializer
+from artist.serializers import ArtistSerializer
 from artist.models import Artist
 from catalog.models import Track
 
@@ -89,7 +88,3 @@ class MyArtistViewSet(viewsets.GenericViewSet):
         instance = self.get_object()
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
-
-
-class MyArtistRegisterView(RegisterView):
-    serializer_class = RegisterArtistSerializer

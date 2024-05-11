@@ -6,6 +6,7 @@ from rest_framework import routers
 from rest_registration.api import views as registration_views
 API_VERSION = 'v1'
 
+from account import views as account_views
 from artist import views as artist_views
 from catalog import views as catalog_views
 from content import views as content_views
@@ -72,11 +73,8 @@ urlpatterns = [
         path('auth/', include('rest_social_auth.urls_jwt_pair')),
         path('account/', include(registration_urls)),
         
-        # Registration
-        #path('account/', include('rest_registration.api.urls')),
-
-        # 
-        path('my-artist/register/', artist_views.MyArtistRegisterView.as_view(), name='artist_register_view'),
+        # account registration
+        path('account/register/', account_views.RegisterView.as_view(), name='artist_register_view'),
     
         # Artist dashboard URLs
         
