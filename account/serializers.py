@@ -8,6 +8,13 @@ from account.models import Account
 
 User = get_user_model()
 
+
+class AccountSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Account
+        exclude = ['id', 'user']
+
+
 class RegisterDoneSerializer(DefaultRegisterUserSerializer):
     class Meta:
         model = User

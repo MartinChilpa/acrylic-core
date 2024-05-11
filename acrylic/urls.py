@@ -23,6 +23,9 @@ router.register('synclists', catalog_views.SyncListViewSet)
 router.register('prices', catalog_views.PriceSerializer)
 router.register('articles', content_views.ArticleViewSet)
 
+# global account
+router.register('account', account_views.AccountViewSet)
+
 # artist account
 router.register('my-artist', artist_views.MyArtistViewSet)
 router.register('my-artist/tracks', catalog_views.MyTrackViewSet)
