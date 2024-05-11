@@ -1,3 +1,4 @@
+import base64
 from rest_framework import serializers, fields
 from rest_registration.api.serializers import DefaultUserProfileSerializer, DefaultRegisterUserSerializer
 from django.contrib.auth import get_user_model
@@ -46,10 +47,17 @@ class UserProfileSerializer(DefaultUserProfileSerializer):
         return user
 
 
-
 class RegisterArtistSerializer(DefaultRegisterUserSerializer):
-    class Meta:
+    class Meta(DefaultRegisterUserSerializer.Meta):
+        fields = ['email', 'password1', 'password2']
         model = User
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        # Set the username to the part before '@' in the email
+        email = attrs['email']
+        attrs['username'] = base64.b64encode(email.encode()).decode()
+        return attrs
 
     def get_fields(self, *args, **kwargs):
         obj_fields = super().get_fields()

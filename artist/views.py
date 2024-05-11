@@ -21,7 +21,6 @@ class ArtistFilter(rest_filters.FilterSet):
     #country = rest_filters.ChoiceFilter(field_name='country', lookup_expr='exact')
     tags = rest_filters.ModelMultipleChoiceFilter(queryset=Tag.objects.all(), to_field_name='name', method='tags_filter')
 
-
     def tags_filter(self, queryset, name, value):
         if value:
             return queryset.filter(tags__in=value) 
