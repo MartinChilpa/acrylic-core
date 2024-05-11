@@ -10,10 +10,14 @@ User = get_user_model()
 
 class RegisterSerializer(DefaultRegisterUserSerializer):
     #profile = fields.JSONField(write_only=True, default=dict, initial=dict)
-    type = fields.ChoiceField(choices=['artist', 'artist'])
-
+    
     class Meta:
         model = User
+        
+    def get_fields(self):
+        fields = super().get_fields()
+        fields['type'] = serializers.ChoiceField(choices=['artist', 'artist'])
+        return fields
 
     def create(self, validated_data):
         data = validated_data.copy()
@@ -27,7 +31,7 @@ class RegisterSerializer(DefaultRegisterUserSerializer):
         user = self.Meta.model.objects.create_user(**data)
         # create related account
         Account.objects.create(user=user)
-        
+
         if data['type'] == 'artist':
             # create related artist profile
             Artist.objects.create(user=user)
