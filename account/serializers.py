@@ -8,13 +8,22 @@ from account.models import Account
 
 User = get_user_model()
 
+class RegisterDoneSerializer(DefaultRegisterUserSerializer):
+    class Meta:
+        model = User
+
 
 class RegisterSerializer(DefaultRegisterUserSerializer):
     #profile = fields.JSONField(write_only=True, default=dict, initial=dict)
     
     class Meta:
         model = User
-        
+    
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError('User with this email already exists')
+        return value
+    
     def get_fields(self):
         fields = super().get_fields()
         fields['type'] = serializers.ChoiceField(choices=['artist', 'artist'])

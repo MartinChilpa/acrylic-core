@@ -294,9 +294,10 @@ REST_REGISTRATION = {
     'PROFILE_SERIALIZER_CLASS': 'account.serializers.UserProfileSerializer',
     # user registration
     'REGISTER_SERIALIZER_CLASS': 'account.serializers.RegisterSerializer',
-    'REGISTER_OUTPUT_SERIALIZER_CLASS': 'account.serializers.RegisterSerializer',
+    'REGISTER_OUTPUT_SERIALIZER_CLASS': 'account.serializers.RegisterDoneSerializer',
     'USER_HIDDEN_FIELDS': ['id', 'username', 'last_login', 'is_active', 'is_staff', 'is_superuser', 'user_permissions', 'groups', 'date_joined'],
-    'USER_PUBLIC_FIELDS': ['email', 'first_name', 'last_name', 'password', 'password_confirm', 'type'],
+    'USER_PUBLIC_FIELDS': ['email', 'first_name', 'last_name', 'password', 'password_confirm'],
+    'USER_EDITABLE_FIELDS': ['email', 'first_name', 'last_name', 'password', 'password_confirm', 'type'],
     'RESET_PASSWORD_VERIFICATION_ENABLED': True,
     'REGISTER_VERIFICATION_URL': f'{FRONTEND_BASE_URL}auth/verify-user/',
     'RESET_PASSWORD_VERIFICATION_URL': f'{FRONTEND_BASE_URL}auth/reset-password/',
