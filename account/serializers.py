@@ -15,6 +15,12 @@ class AccountSerializer(serializers.ModelSerializer):
         exclude = ['id', 'user']
 
 
+class AccountUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Account
+        fields = ['billing_email', 'billing_details', 'country_code', 'phone', 'tax_id', 'failed_payment_notifications']
+
+
 class RegisterDoneSerializer(DefaultRegisterUserSerializer):
     class Meta:
         model = User

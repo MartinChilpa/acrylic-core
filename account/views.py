@@ -1,11 +1,11 @@
 from rest_registration.api.views.register import RegisterView
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.http import Http404
 from django.shortcuts import render
 from account.models import Account
-from account.serializers import RegisterSerializer, AccountSerializer
+from account.serializers import RegisterSerializer, AccountSerializer, AccountUpdateSerializer
 
 
 class RegisterView(RegisterView):
@@ -23,11 +23,20 @@ class AccountViewSet(viewsets.GenericViewSet):
             raise Http404('No Account instance found.')
         return instance
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get', 'put'])
     def profile(self, request):
         """
-        Retrieve the singleton instance.
+        Retrieve or update the user account data.
         """
         instance = self.get_object()
-        serializer = self.get_serializer(instance)
-        return Response(serializer.data)
+
+        if request.method == 'GET':
+            serializer = AccountSerializer(instance)
+            return Response(serializer.data)
+    
+        elif request.method == 'PUT':
+            serializer = AccountUpdateSerializer(instance, data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
