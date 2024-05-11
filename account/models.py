@@ -32,12 +32,12 @@ User.add_to_class('profile', get_profile)
 
 class Account(BaseModel):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, related_name='account', on_delete=models.PROTECT)
-    billing_email = models.EmailField()
+    billing_email = models.EmailField(blank=True)
     billing_details = models.TextField(blank=True)
-    country_code = models.PositiveIntegerField()
-    phone = models.PositiveIntegerField()
+    country_code = models.CharField(max_length=2, blank=True)
+    phone = models.PositiveIntegerField(null=True)
     tax_id = models.CharField(max_length=20)
-    failed_payment_notifications = models.BooleanField()
+    failed_payment_notifications = models.BooleanField(default=True)
 
     def __str__(self):
         return self.user.email
