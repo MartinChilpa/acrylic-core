@@ -16,11 +16,11 @@ class ArtistSerializer(serializers.ModelSerializer):
 
 
 class RegisterArtistSerializer(DefaultRegisterUserSerializer):
-    profile = fields.JSONField(write_only=True, default=dict, initial=dict)
+    #profile = fields.JSONField(write_only=True, default=dict, initial=dict)
 
     class Meta:
         model = User
-        fields = ['email', 'password1', 'password2']
+        fields = ['email', 'password', 'password_confirm']
 
     #def get_fields(self, *args, **kwargs):
     #    obj_fields = super().get_fields()
@@ -28,7 +28,15 @@ class RegisterArtistSerializer(DefaultRegisterUserSerializer):
     #    return obj_fields
 
     def create(self, validated_data):
-        profile_data = validated_data.pop('profile')
+        data = validated_data.copy()
+        # set username as base64 email
+        data['username'] = data['email']
+        if self.has_password_confirm_field():
+            del data['password_confirm']
+        return self.Meta.model.objects.create_user(**data)
+    """
+    def create(self, validated_data):
+        #profile_data = validated_data.pop('profile')
         user = super().create(validated_data)
         # create related artist profile
         Artist.objects.create(user=user)
@@ -38,3 +46,4 @@ class RegisterArtistSerializer(DefaultRegisterUserSerializer):
             setattr(profile, attr, value)
         profile.save()
         return user
+    """
