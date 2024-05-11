@@ -1,6 +1,7 @@
 
 import celery
 import spotipy
+from spotipy.oauth2 import SpotifyClientCredentials
 from django.apps import apps
 from acrylic.celery import app
 
