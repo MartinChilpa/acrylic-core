@@ -294,7 +294,7 @@ REST_REGISTRATION = {
     'PROFILE_SERIALIZER_CLASS': 'account.serializers.UserProfileSerializer',
     # user registration
     'REGISTER_SERIALIZER_CLASS': 'artist.serializers.RegisterArtistSerializer',
-    'REGISTER_OUTPUT_SERIALIZER_CLASS': 'account.serializers.UserProfileSerializer',
+    'REGISTER_OUTPUT_SERIALIZER_CLASS': 'artist.serializers.RegisterArtistSerializer',
     'USER_HIDDEN_FIELDS': ['username', 'last_login', 'is_active', 'is_staff', 'is_superuser', 'user_permissions', 'groups', 'date_joined'],
 
     'RESET_PASSWORD_VERIFICATION_ENABLED': True,
