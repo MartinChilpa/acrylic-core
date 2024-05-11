@@ -1,4 +1,4 @@
-from django.db.models import Max, F, FloatField
+from django.db.models import Max, F, FloatField, ExpressionWrapper
 from django.db.models.functions import Cast
 from django.core.management.base import BaseCommand
 from django.conf import settings
@@ -18,24 +18,25 @@ class Command(BaseCommand):
             max_tiktok_likes=Max('tiktok_likes')
         )
 
-        # Normalize each metric and calculate weighted score
+        # normalize each metric and calculate weighted score
         ranked_artists = Artist.objects.annotate(
-            normalized_spotify_followers=Cast('spotify_followers', FloatField()) / (max_values['max_spotify_followers'] or 1),
-            normalized_spotify_popularity=Cast('spotify_popularity', FloatField()) / (max_values['max_spotify_popularity'] or 1),
-            normalized_spotify_monthly_listeners=Cast('spotify_monthly_listeners', FloatField()) / (max_values['max_spotify_monthly_listeners'] or 1),
-            normalized_instagram_followers=Cast('instagram_followers', FloatField()) / (max_values['max_instagram_followers'] or 1),
-            normalized_tiktok_followers=Cast('tiktok_followers', FloatField()) / (max_values['max_tiktok_followers'] or 1),
-            normalized_tiktok_likes=Cast('tiktok_likes', FloatField()) / (max_values['max_tiktok_likes'] or 1)
-        ).annotate(
-            score=F('normalized_spotify_followers') * 0.1 +
+            normalized_spotify_followers=ExpressionWrapper(Cast('spotify_followers', FloatField()) / (max_values['max_spotify_followers'] or 1), output_field=FloatField()),
+            normalized_spotify_popularity=ExpressionWrapper(Cast('spotify_popularity', FloatField()) / (max_values['max_spotify_popularity'] or 1), output_field=FloatField()),
+            normalized_spotify_monthly_listeners=ExpressionWrapper(Cast('spotify_monthly_listeners', FloatField()) / (max_values['max_spotify_monthly_listeners'] or 1), output_field=FloatField()),
+            normalized_instagram_followers=ExpressionWrapper(Cast('instagram_followers', FloatField()) / (max_values['max_instagram_followers'] or 1), output_field=FloatField()),
+            normalized_tiktok_followers=ExpressionWrapper(Cast('tiktok_followers', FloatField()) / (max_values['max_tiktok_followers'] or 1), output_field=FloatField()),
+            normalized_tiktok_likes=ExpressionWrapper(Cast('tiktok_likes', FloatField()) / (max_values['max_tiktok_likes'] or 1), output_field=FloatField()),
+        ).annotate(score=F('normalized_spotify_followers') * 0.1 +
                 F('normalized_spotify_popularity') * 0.3 +
                 F('normalized_spotify_monthly_listeners') * 0.4 +
-                F('normalized_instagram_followers') * 0.1 +
                 F('normalized_tiktok_followers') * 0.05 +
+                F('normalized_instagram_followers') * 0.1 +
                 F('normalized_tiktok_likes') * 0.05
         ).order_by('-score')
 
-        print(ranked_artists)
-        return True
-
-
+        for idx, artist in enumerate(ranked_artists):
+            artist.kamrank = idx + 1
+            artist.save()
+            print(f'{artist.name} {artist.score}')
+        
+        return 'KAMRank updated'
