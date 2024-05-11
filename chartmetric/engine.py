@@ -38,12 +38,16 @@ class Chartmetric():
         print(self.auth_token)
 
     def get_track_artist_ids_from_isrc(self, isrc):
-        path = f'search?q={isrc}&limit=1'
+        path = f'search?q={isrc}&type=tracks&limit=1'
         return self._request('get', path)
+
+    #def get_track_stats(self, track_id):
+    #    path = f'track/{track_id}/{type}/charts'
+    #    print(f'GET {path}')
+    #    data[source] = self._request('get', path)['obj']
 
     def get_artist_stats(self, artist_id, sources=['instagram', 'spotify']):
         # https://api.chartmetric.com/api/artist/439/stat/spotify
-
 
         """
         GET artist/5398878/stat/instagram?latest=true

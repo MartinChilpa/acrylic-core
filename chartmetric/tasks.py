@@ -4,7 +4,7 @@ from chartmetric.engine import Chartmetric
 from acrylic.celery import app
 
 @app.task
-def load_chartmetric_ids(track_id):
+def load_chartmetric_ids(track_id, force=False):
     Track = apps.get_model('catalog', 'track')
 
     try:
@@ -12,19 +12,23 @@ def load_chartmetric_ids(track_id):
     except Track.DoesNotExist:
         pass
     else:
-        # auth in chartmetric
-        cm = Chartmetric()
-        cm.authenticate()
-        data = cm.get_track_artist_ids_from_isrc(track.isrc)
-        if 'error' not in data and getattr(data, 'obj') and len(data['obj']['tracks']) > 0:
-            track.chartmetric_id = data['obj']['tracks'][0]['id']
-            print(f'Track: {track.chartmetric_id}')
-            if not track.artist.chartmetric_id:
-                artist = track.artist
-                artist.chartmetric_id = data['obj']['tracks'][0]['artist'][0]['id']
-                artist.save()
-                print(f'Artist: {artist.chartmetric_id}')
-            track.save()
+        if force == True or track.chartmetric_id == '':
+            # auth in chartmetric
+            cm = Chartmetric()
+            cm.authenticate()
+            data = cm.get_track_artist_ids_from_isrc(track.isrc)
+            if 'error' not in data and getattr(data, 'obj') and len(data['obj']['tracks']) > 0:
+                track_data = data['obj']['tracks'][0]
+                if track_data['isrc'] == track.isrc:
+                    # ensure that ISRC matches
+                    track.chartmetric_id = track_data['id']
+                    print(f'Track: {track.chartmetric_id}')
+                    if not track.artist.chartmetric_id:
+                        artist = track.artist
+                        artist.chartmetric_id = track_data['artist'][0]['id']
+                        artist.save()
+                        print(f'Artist: {artist.chartmetric_id}')
+                    track.save()
     return True
 
 

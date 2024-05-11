@@ -5,6 +5,7 @@ from django.utils.html import format_html
 from import_export import resources
 from import_export.admin import ImportExportModelAdmin
 from spotify.tasks import load_spotify_id
+from chartmetric.tasks import load_chartmetric_ids
 from catalog.models import Distributor, Genre, Price, Track, SyncList, SyncListTrack
 
 
@@ -33,10 +34,16 @@ class PriceAdmin(admin.ModelAdmin):
     list_display = ['name', 'single_use_price', 'max_artist_tracks', 'default', 'active', 'order']
 
 
-def reload_spotify_data(modeladmin, request, queryset):
+def reload_spotify_ids(modeladmin, request, queryset):
     for track in queryset:
         load_spotify_id.delay(track.id)
-reload_spotify_data.short_description = 'Reload data from Spotify'
+reload_spotify_ids.short_description = 'Reload Spotify IDs'
+
+
+def reload_chartmetric_ids(modeladmin, request, queryset):
+    for track in queryset:
+        load_chartmetric_ids.delay(track.id)
+reload_chartmetric_ids.short_description = 'Reload IDs from Chartmetric'
 
 
 @admin.register(Track)
@@ -49,7 +56,7 @@ class TrackAdmin(ImportExportModelAdmin):
     raw_id_fields = ['artist']
     filter_horizontal = ['genres', 'additional_main_artists', 'featured_artists']
     resource_classes = [TrackResource]
-    actions = [reload_spotify_data]
+    actions = [reload_spotify_data, reload_chartmetric_ids]
 
     @admin.display(ordering='artist', description='Artist')
     def artist_link(self, obj):

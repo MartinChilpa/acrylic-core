@@ -52,7 +52,9 @@ class ArtistViewSet(viewsets.ReadOnlyModelViewSet):
     filter_backends = [rest_filters.DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = ArtistFilter
     search_fields = ['name', 'slug', 'bio', '=spotify_url', 'tags__name']
-    ordering_fields = ['name', 'created', 'updated']
+    ordering_fields = [
+        'name', 'kamrank', 'spotify_popularity', 'spotify_followers', 'instagram_followers', 'created', 'updated'
+    ]
     
     @action(detail=True, methods=['get'])
     def tracks(self, request, uuid=None):
