@@ -11,7 +11,7 @@ from taggit.models import Tag
 from artist.permissions import IsArtistOwner
 from common.api.pagination import StandardPagination
 from catalog.serializers import TrackSerializer
-from artist.serializers import ArtistSerializer
+from artist.serializers import ArtistSerializer, ArtistUpdateSerializer
 from artist.models import Artist
 from catalog.models import Track
 
@@ -80,11 +80,20 @@ class MyArtistViewSet(viewsets.GenericViewSet):
             raise Http404('No Artist profile instance found.')
         return instance
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get', 'put'])
     def profile(self, request):
         """
-        Retrieve the singleton instance.
+        Retrieve or update the artist profile.
         """
         instance = self.get_object()
-        serializer = self.get_serializer(instance)
-        return Response(serializer.data)
+        
+        if request.method == 'GET':
+            serializer = ArtistSerializer(instance)
+            return Response(serializer.data)
+        
+        elif request.method == 'PUT':
+            serializer = ArtistUpdateSerializer(instance, data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

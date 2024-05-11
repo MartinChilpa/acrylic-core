@@ -11,4 +11,10 @@ class ArtistSerializer(serializers.ModelSerializer):
     class Meta:
         model = Artist
         #fields = '__all__'
-        exclude = ['id']
+        exclude = ['id', 'user']
+
+
+class ArtistUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Artist
+        fields = ['name', 'bio', 'slug', 'hometown', 'country', 'image', 'background_image']
