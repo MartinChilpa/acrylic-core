@@ -61,7 +61,7 @@ class TrackSerializer(serializers.ModelSerializer):
         model = Track
         fields = [
             'uuid', 'isrc', 'artist', 'name', 'duration', 'released', 'is_cover',
-            'is_remix', 'is_instrumental', 'is_explicit', 'record_type', 'bpm',
+            'is_remix', 'is_instrumental', 'is_explicit', 'bpm',
             'language', 'lyrics', 'distributor', 'snippet', 'genres', 
             'additional_main_artists', 'featured_artists', 'tags', 'master_splits',
             'price',

@@ -102,7 +102,7 @@ class Track(BaseModel):
     is_instrumental = models.BooleanField(default=False)
     is_explicit = models.BooleanField(default=False)
     
-    record_type = models.CharField(max_length=10, choices=RecordType.choices, default=RecordType.STUDIO)
+    #record_type = models.CharField(max_length=10, choices=RecordType.choices, default=RecordType.STUDIO)
     bpm = models.PositiveIntegerField('BPM', blank=True, null=True)
     language = models.CharField(max_length=2, choices=Language.choices, blank=True)
     lyrics = models.TextField(blank=True)

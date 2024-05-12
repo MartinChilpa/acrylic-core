@@ -9,6 +9,8 @@ from account.serializers import RegisterSerializer, AccountSerializer, AccountUp
 
 
 class RegisterView(RegisterView):
+    permission_classes = []
+    authentication_classes = []
     serializer_class = RegisterSerializer
 
 

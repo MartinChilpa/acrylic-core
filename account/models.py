@@ -47,13 +47,20 @@ def get_upload_path(instance, filename):
     return f'documents/{instance.uuid}/{filename}'
 
 
-#class Document(BaseModel):
-#    name = 
-#    document = models.FileField(upload_to=get_upload_path)
-    
+class Document(BaseModel):
+    class Type(models.TextChoices):
+        REVENUE_SHARE = 'REVENUE_SHARE', 'Revenue Share Agreement'
+        TOS = 'TOS', 'Terms of Service'
+        TAX = 'TAX', 'Tax'
+        OTHER = 'OTHER', 'Other'
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='transactions', on_delete=models.PROTECT)
+    name = models.CharField(max_length=200)
+    document = models.FileField(upload_to=get_upload_path)
+    type = models.CharField(max_length=20, choices=Type.choices, default=Type.OTHER)
 
+    class Meta:
+        ordering = ['-created']
 
+    def __str__(self):
+        return self.name
 
-     
-#class Biiilng
-#    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name)

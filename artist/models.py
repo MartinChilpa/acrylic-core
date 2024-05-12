@@ -100,8 +100,3 @@ class Artist(BaseModel):
     
     def get_public_url(self):
         return f'{settings.ARTIST_PROFILE_BASE_URL}{self.slug}/'
-
-# W19 W6 tax form
-
-#class Documents(BaseModel):
-#    models.GenericIPAddressField(_(""), protocol="both", unpack_ipv4=False)
