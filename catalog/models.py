@@ -89,10 +89,11 @@ class Track(BaseModel):
     # example USEE10001993
     isrc = models.CharField('ISRC', max_length=12, validators=[validate_isrc])
     artist = models.ForeignKey('artist.Artist', related_name='tracks', on_delete=models.PROTECT)
-    name = models.CharField(max_length=250)
+    name = models.CharField(max_length=250, blank=True)
     duration = models.PositiveIntegerField(null=True, help_text='Duration in milliseconds')
 
     distributor = models.ForeignKey(Distributor, related_name='tracks', on_delete=models.SET_NULL, blank=True, null=True)
+    other_distributor = models.CharField(max_length=100, blank=True)
 
     # total_uses
     #price
