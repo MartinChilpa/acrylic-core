@@ -12,6 +12,7 @@ from catalog import views as catalog_views
 from content import views as content_views
 from legal import views as legal_views
 from legal import webhooks as legal_webhooks
+from spotify import views as spotify_views
 
 
 router = routers.DefaultRouter()
@@ -22,6 +23,9 @@ router.register('distributors', catalog_views.DistributorViewSet)
 router.register('synclists', catalog_views.SyncListViewSet)
 router.register('prices', catalog_views.PriceSerializer)
 router.register('articles', content_views.ArticleViewSet)
+
+# spotify views
+router.register('spotify/track/preview', spotify_views.TrackPreviewViewSet, basename='simple')
 
 # global account
 router.register('account', account_views.AccountViewSet)

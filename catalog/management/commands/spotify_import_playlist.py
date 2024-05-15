@@ -1,9 +1,8 @@
 from datetime import datetime
 import dateutil
-import spotipy
-from spotipy.oauth2 import SpotifyClientCredentials
 from django.core.management.base import BaseCommand
 from django.conf import settings
+from spotify.engine import spotify_client
 from artist.models import Artist
 from catalog.models import Track
 
@@ -29,10 +28,7 @@ class Command(BaseCommand):
         self.load_tracks_and_artists(tracks_data)
 
     def get_spotify_instance(self):
-        client_id = settings.SPOTIFY_CLIENT_ID
-        client_secret = settings.SPOTIFY_CLIENT_SECRET
-        spotify = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=client_id, client_secret=client_secret))
-        return spotify
+        return spotify_client()
         results = spotify.search(q=f'isrc:{self.isrc}', type='track', market='ES')
 
     def get_playlist_tracks(self, sp, playlist_id):

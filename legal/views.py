@@ -13,7 +13,7 @@ class MySplitSheetViewSet(viewsets.ModelViewSet):
     lookup_field = 'uuid'
     pagination_class = StandardPagination
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['track__name']
+    search_fields = ['track__name', 'track__uuid']
     ordering_fields = ['created', 'updated']
 
     def get_queryset(self):
