@@ -1,0 +1,22 @@
+{% extends "admin/change_list.html" %}
+{% load static %}
+
+{% block extrastyle %}
+  {{ block.super }}
+{% endblock %}
+
+
+{% block extrahead %}
+  {{ block.super }}
+  <script type="text/javascript" src="{% static "library/player.js" %}"></script>
+  <link rel="stylesheet" href="{% static "library/player.css" %}">
+{% endblock %}
+
+{% block object-tools-items %}
+  <li style="padding-right:20px;">
+    <audio id="player" controls preload="none">
+      <source id="source_wav" src="" type="audio/mpeg">
+    </audio>
+  </li>
+  {{ block.super }}
+{% endblock %}

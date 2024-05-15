@@ -1,0 +1,20 @@
+audio {
+    max-width: 120px;
+    height:26px;
+  }
+  
+  audio::-webkit-media-controls-volume-slider {
+    display: none !important;
+  }
+  
+  audio::-webkit-media-controls-timeline-container {
+    display: none !important;
+  }
+  
+  audio::-webkit-media-controls-time-remaining-display {
+    display: none !important;
+  }
+  
+  audio::-webkit-media-controls-timeline {
+    display: none !important;
+  }

@@ -49,7 +49,7 @@ reload_chartmetric_ids.short_description = 'Reload IDs from Chartmetric'
 @admin.register(Track)
 class TrackAdmin(ImportExportModelAdmin):
     queryset = Track.objects.select_related('artist')
-    list_display = ['isrc', 'name', 'artist_link', 'distributor', 'duration', 'released', 'is_cover', 
+    list_display = ['isrc', 'name', 'artist_link', 'distributor', 'duration', 'released', 'snippet_preview', 'is_cover', 
                     'is_remix', 'is_instrumental', 'is_explicit', 'created', 'updated']
     list_filter = ['released', 'distributor', 'is_remix', 'is_cover', 'is_instrumental', 'created', 'updated']
     search_fields = ['uuid', 'isrc', 'name', 'duration', 'artist__name']
@@ -57,11 +57,18 @@ class TrackAdmin(ImportExportModelAdmin):
     filter_horizontal = ['genres', 'additional_main_artists', 'featured_artists']
     resource_classes = [TrackResource]
     actions = [reload_spotify_ids, reload_chartmetric_ids]
+    change_list_template = 'admin/catalog/track/change_list.html'
 
     @admin.display(ordering='artist', description='Artist')
     def artist_link(self, obj):
         link = reverse('admin:artist_artist_change', args=[obj.artist_id])
-        return format_html('<a href="{}">{}</a>', link, obj.artist.name)
+        return format_html(f'<a href="{link}">{obj.artist.name}</a>')
+
+    @admin.display(ordering='snippet', description='Preview')
+    def snippet_preview(self, obj):
+        if obj.snippet:
+            return format_html(f'<a href="#" class="play" data-url="{obj.snippet}">Play</a>')
+        return ''
 
 
 class SyncListTrackInline(admin.TabularInline):
