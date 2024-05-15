@@ -1,5 +1,8 @@
+import time
+import requests
 from datetime import datetime
 import dateutil
+from django.core.files.base import ContentFile
 from django.core.management.base import BaseCommand
 from django.conf import settings
 from spotify.engine import spotify_client
@@ -29,13 +32,13 @@ class Command(BaseCommand):
 
     def get_spotify_instance(self):
         return spotify_client()
-        results = spotify.search(q=f'isrc:{self.isrc}', type='track', market='ES')
 
     def get_playlist_tracks(self, sp, playlist_id):
         results = sp.playlist_tracks(playlist_id)
         tracks = []
         while results['next']:
             tracks.extend(results['items'])
+            time.sleep(0.2)
             results = sp.next(results)
         tracks.extend(results['items'])
         return tracks
@@ -49,8 +52,9 @@ class Command(BaseCommand):
             main_artists = []
             
             for artist_info in track_info['artists']:
+                print(artist_info['id'])
                 artist, _ = Artist.objects.update_or_create(
-                    spotify_url=f"https://open.spotify.com/artist/{artist_info['id']}",
+                    spotify_id=artist_info['id'],
                     defaults={
                         'spotify_id': artist_info['id'],
                         'name': artist_info['name'],
@@ -73,15 +77,23 @@ class Command(BaseCommand):
             default_date = datetime(datetime.now().year, 1, 1)
             release_date = dateutil.parser.parse(track_info['album']['release_date'], default=default_date)
 
-            track, _ = Track.objects.get_or_create(
+            track, _ = Track.objects.update_or_create(
                 spotify_id=track_info['id'],
-                name=track_info['name'],
-                artist=artist,
-                duration=int(track_info['duration_ms'] / 1000),
-                released=release_date,
-                #spotify_url=f"https://open.spotify.com/track/{track_info['id']}",
-                isrc=track_info['external_ids'].get('isrc', '')
+                defaults={
+                    'isrc': track_info['external_ids'].get('isrc', ''),
+                    'name': track_info['name'],
+                    'artist': artist,
+                    'duration': int(track_info['duration_ms']),
+                    'released': release_date,
+                    'spotify_url': track_info['external_urls'].get('spotify'),
+                    'spotify_popularity': int(track_info['popularity']),
+                }
             )
+
+            # add 30 sec preview mp3
+            if not track.snippet and track_info.get('preview_url', None):
+                snippet_file = requests.get(track_info['preview_url'])
+                track.snippet.save('snippet.mp3', ContentFile(snippet_file.content))
 
             # Add additional main artists
             if len(main_artists) > 1:
