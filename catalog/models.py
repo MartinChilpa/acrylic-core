@@ -163,10 +163,14 @@ class Track(BaseModel):
             load_chartmetric_ids.delay(self.id)
 
     def get_duration(self):
-        return timedelta(milliseconds=self.duration)
+        if self.duration:
+            return timedelta(milliseconds=self.duration)
+        return None
 
     def get_duration_display(self):
-        return str(self.get_duration()).split('.')[0].split(':', 1)[-1]
+        if self.duration:
+            return str(self.get_duration()).split('.')[0].split(':', 1)[-1]
+        return ''
 
     def get_latest_signed_splitsheet(self):
         return self.split_sheets.exclude(signed=None).order_by('-signed').first()
