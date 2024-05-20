@@ -15,10 +15,10 @@ def send_signature_request_for_ownership_validation(split_sheet):
 
     # avoid repeating signature request for same email in master/publishing splits
     emails = {}
-    for split in split_sheet.master_splits.values_list('email', flat=True):
+    for split in split_sheet.master_splits.all():
         if split.email not in emails:
             emails[split.email] = split.legal_name
-    for split in split_sheet.publishing_splits.values_list('email', flat=True):
+    for split in split_sheet.publishing_splits.all():
         if split.email not in emails:
             emails[split.email] = split.legal_name
 

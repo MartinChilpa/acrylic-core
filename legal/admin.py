@@ -18,8 +18,7 @@ class MasterSplitInline(admin.TabularInline):
 @admin.register(SplitSheet)
 class SplitSheetAdmin(admin.ModelAdmin):
     inlines = [MasterSplitInline, PublishingSplitInline]
-    list_display = ['uuid', 'artist', 'track', 'track_name', 'signed', 'signature_request_id']
-    list_filter = ['signed', 'created', 'updated']
-    search_fields = ['uuid', 'artist__name', 'track__name', 'track_name', 'signature_request_id']
+    list_display = ['uuid', 'artist', 'isrc', 'track', 'status', 'signed', 'signature_request_id']
+    list_filter = ['status', 'signed', 'created', 'updated']
+    search_fields = ['uuid', 'isrc', 'artist__name', 'track__name', 'signature_request_id']
     raw_id_fields = ['track', 'artist']
-
