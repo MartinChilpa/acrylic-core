@@ -7,7 +7,7 @@ from catalog.validators import validate_isrc
 class SplitSheet(BaseModel):
     artist = models.ForeignKey('artist.Artist', related_name='split_sheets', on_delete=models.CASCADE)
     track = models.OneToOneField('catalog.Track', related_name='split_sheet', on_delete=models.CASCADE, blank=True, null=True)
-    isrc = models.CharField('ISRC', max_length=12, validators=[validate_isrc], blank=True)
+    #isrc = models.CharField('ISRC', max_length=12, validators=[validate_isrc], blank=True)
     # alternative for when no track is selected
     track_name = models.CharField(max_length=150, blank=True)
 
