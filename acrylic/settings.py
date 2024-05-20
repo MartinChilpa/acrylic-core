@@ -308,6 +308,8 @@ REST_REGISTRATION = {
     'NOT_AUTHENTICATED_PERMISSION_CLASSES': [],
 }
 
+
+
 # JWT auth settings
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
@@ -321,6 +323,9 @@ SIMPLE_JWT = {
 #SECURE_SSL_REDIRECT = True
 #SESSION_COOKIE_SECURE = True
 #CSRF_COOKIE_SECURE = True
+
+# Sorl thumbnail settings 
+THUMBNAIL_FORCE_OVERWRITE = True
 
 # Dropbox Sign
 DROPBOX_SIGN_API_KEY = config('DROPBOX_SIGN_API_KEY', default='')
