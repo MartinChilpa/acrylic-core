@@ -10,7 +10,12 @@ app = Celery('acrylic')
 
 app.conf.update(
     BROKER_URL=config('REDISCLOUD_URL', ''),
-    CELERY_RESULT_BACKEND=config('REDISCLOUD_URL', '')
+    CELERY_RESULT_BACKEND=config('REDISCLOUD_URL', ''),
+    #CELERY_ALWAYS_EAGER=True,
+    BROKER_TRANSPORT_OPTIONS={
+        'max_retries': 5,
+        'max_connections': 30,
+    }
 )
 
 app.autodiscover_tasks()
