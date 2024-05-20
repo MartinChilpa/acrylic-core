@@ -1,14 +1,14 @@
-
+import requests
 import celery
-from django.apps import apps
-from acrylic.celery import app
 from spotify.engine import spotify_client
+from django.apps import apps
+from django.core.files.base import ContentFile
+from acrylic.celery import app
+
 
 @app.task 
 def load_spotify_id(track_id, force=False):
-
     Track = apps.get_model('catalog', 'track')
-
     try:
         track = Track.objects.get(id=track_id)
     except Track.DoesNotExist:
@@ -30,4 +30,38 @@ def load_spotify_id(track_id, force=False):
             else:
                 print(f'{track.name}, {track.artist.name} - ISRC {track.isrc} No track ID found')
             track.save()
+
+            # call load data
+            # load_spotify_track_data(track.id)
     return True
+
+
+@app.task
+def load_spotify_track_data(track_id, force=False):
+    Track = apps.get_model('catalog', 'track')
+    try:
+        # get track with spotify ID
+        track = Track.objects.exclude(spotify_id=None).get(id=track_id)
+    except Track.DoesNotExist:
+        pass
+    else:
+        fields = ['cover_image', 'snippet']
+        if force == True or any([getattr(track, field) in [None, ''] for field in fields]):
+            spotify = spotify_client()
+            track_info = spotify.track(track.spotify_id)
+            album_images = track_info['album']['images']
+
+            # load cover art
+            if force or not track.cover_image:
+                try:
+                    image_url = track_info['album']['images'][0]['url']
+                except KeyError:
+                    image_url = ''
+                else:
+                    image_file = requests.get(image_url)
+                    track.cover_image.save('cover.jpg', ContentFile(image_file.content))
+
+            # load 30 sec preview mp3
+            if force or not track.snippet and track_info.get('preview_url', None):
+                snippet_file = requests.get(track_info['preview_url'])
+                track.snippet.save('snippet.mp3', ContentFile(snippet_file.content))

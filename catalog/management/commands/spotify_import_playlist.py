@@ -2,10 +2,10 @@ import time
 import requests
 from datetime import datetime
 import dateutil
-from django.core.files.base import ContentFile
 from django.core.management.base import BaseCommand
 from django.conf import settings
 from spotify.engine import spotify_client
+from spotify.tasks import load_spotify_track_data
 from artist.models import Artist
 from catalog.models import Track
 
@@ -90,10 +90,8 @@ class Command(BaseCommand):
                 }
             )
 
-            # add 30 sec preview mp3
-            if not track.snippet and track_info.get('preview_url', None):
-                snippet_file = requests.get(track_info['preview_url'])
-                track.snippet.save('snippet.mp3', ContentFile(snippet_file.content))
+            # load 30s snippet & cover art
+            load_spotify_track_data.delay(track.id)
 
             # Add additional main artists
             if len(main_artists) > 1:
