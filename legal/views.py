@@ -4,6 +4,7 @@ from common.api.pagination import StandardPagination
 from artist.permissions import IsTrackArtistOwner
 from legal.models import SplitSheet, PublishingSplit, MasterSplit
 from legal.serializers import SplitSheetSerializer,SplitSheetReadSerializer, PublishingSplitSerializer, MasterSplitSerializer
+#from rest_framework.metadata import SimpleMetadata
 
 
 class MySplitSheetViewSet(viewsets.ModelViewSet):
@@ -13,8 +14,9 @@ class MySplitSheetViewSet(viewsets.ModelViewSet):
     lookup_field = 'uuid'
     pagination_class = StandardPagination
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['track__name', 'track__uuid']
+    search_fields = ['isrc', 'track__name', 'track__uuid']
     ordering_fields = ['created', 'updated']
+    #metadata_class = SimpleMetadata
 
     def get_queryset(self):
         return self.request.user.artist.split_sheets.all()
