@@ -74,7 +74,7 @@ class TrackAdmin(ImportExportModelAdmin):
     @admin.display(ordering='cover_image', description='Cover')
     def cover_preview(self, obj):
         if obj.cover_image:
-            thumbnail = get_thumbnail(my_file, '100x100', crop='center', quality=99)
+            thumbnail = get_thumbnail(obj.cover_image, '100x100', crop='center', quality=99)
             return format_html(f'<img src="{thumbnail.url}" class="cover">')
         return ''
 
