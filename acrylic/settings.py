@@ -330,13 +330,15 @@ THUMBNAIL_FORCE_OVERWRITE = True
 # Dropbox Sign
 DROPBOX_SIGN_API_KEY = config('DROPBOX_SIGN_API_KEY', default='')
 
+# Husbpot
+HUBSPOT_ACCESS_TOKEN = config('HUBSPOT_ACCESS_TOKEN', default='')
+
 # Chartmetric API
 CHARTMETRIC_REFRESH_TOKEN = config('CHARTMETRIC_REFRESH_TOKEN', default='sZBgq3RceskBkFnjc8YNDm0LUJ7swpuqk6NL4CyEYnlkL5NVpFx2WU8cGwAD7XlZ')
 
 # Spotify API
 SPOTIFY_CLIENT_ID = config('SPOTIFY_CLIENT_ID', default='')
 SPOTIFY_CLIENT_SECRET = config('SPOTIFY_CLIENT_SECRET', default='')
-
 
 # Social auth: Spotify
 SOCIAL_AUTH_SPOTIFY_KEY = os.environ.get('SOCIAL_AUTH_SPOTIFY_KEY', '')

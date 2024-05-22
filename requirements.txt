@@ -29,3 +29,4 @@ django-storages==1.14.2
 django-cors-headers==4.3.1
 django-import-export==4.0.1
 sorl-thumbnail==12.10.0
+hubspot-api-client==9.0.0
