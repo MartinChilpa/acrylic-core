@@ -91,9 +91,11 @@ def split_sheet_load_spotify_data_task(split_sheet_id):
                 image_url = track_data['album']['images'][0]['url']
             except KeyError:
                 image_url = ''
-            
+            else:
+                image_file = requests.get(image_url)
+                split_sheet.track_cover_image.save('cover.jpg', ContentFile(image_file.content))
+
             split_sheet.track_name = track_data['name']
-            split_sheet.track_cover_image = requests.get(image_url)
             split_sheet.save()
     
     return True

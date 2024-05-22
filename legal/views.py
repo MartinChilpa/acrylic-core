@@ -4,7 +4,7 @@ from rest_framework.decorators import action
 from drf_spectacular.utils import extend_schema
 from django_filters import rest_framework as rest_filters
 from common.api.pagination import StandardPagination
-from artist.permissions import IsTrackArtistOwner
+from artist.permissions import IsArtistOwner
 from legal.models import SplitSheet, PublishingSplit, MasterSplit
 from legal.serializers import SplitSheetSerializer,SplitSheetReadSerializer, PublishingSplitSerializer, MasterSplitSerializer
 #from rest_framework.metadata import SimpleMetadata
@@ -26,7 +26,7 @@ class SplitSheetFilter(rest_filters.FilterSet):
 
 
 class MySplitSheetViewSet(viewsets.ModelViewSet):
-    permission_classes = [permissions.IsAuthenticated, IsTrackArtistOwner]
+    permission_classes = [permissions.IsAuthenticated, IsArtistOwner]
     serializer_class = SplitSheetSerializer
     queryset = SplitSheet.objects.none()
     lookup_field = 'uuid'
