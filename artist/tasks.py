@@ -11,7 +11,7 @@ def create_artist_in_hubspot_task(artist_id):
         Artist = apps.get_model('artist', 'Artist')
         
         try:
-            artist = Artist.objects.get(id=artist_id)
+            artist = Artist.objects.exclude(user=None).get(id=artist_id)
         except Artist.DoesNotExist:
             pass
         else:
