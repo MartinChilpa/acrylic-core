@@ -118,7 +118,7 @@
           </td>
           <td>{{ track.distributor|default:"-" }}</td>
           <td>{{ track.get_duration_display }}</td>
-          <td>{% if track.snippet %}{{ track.snippet.url }}{% endif %}</td>
+          <td>{% if track.snippet %}<a href="{{ track.snippet.url }}" target="_blank">Play</a>{% endif %}</td>
           <td><a href="{{ track.get_spotify_url }}" target="_blank">{{ track.spotify_id }}</a></td>
           <td><a href="{{ track.get_spotify_url }}" target="_blank">{{ track.chartmetric_id }}</a></td>
           <td>{{ track.price|default:"Basic" }}</td>
