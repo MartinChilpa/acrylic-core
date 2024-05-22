@@ -2,12 +2,11 @@
 {% load i18n thumbnail %}
 
 {% block content %}
-{% with artist=object %}
   <h3>{{ artist.uuid }}</h3>
 
   <p>
     <a href="{% url 'admin:artist_artist_changelist' %}">{% trans "Back to list" %}</a><br>
-    <a href="{% url 'admin:artist_artist_change' object.id %}">{% trans "Edit artist" %}</a>
+    <a href="{% url 'admin:artist_artist_change' artist.id %}">{% trans "Edit artist" %}</a>
   </p>
 
   <p>
@@ -139,5 +138,4 @@
   </div>
 
   
-{% endwith %}
 {% endblock %}

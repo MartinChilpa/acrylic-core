@@ -36,6 +36,7 @@ class ArtistAdmin(admin.ModelAdmin):
         context = dict(
             self.admin_site.each_context(request),
             title=artist.name,
+            artist=artist,
             tracks=artist.tracks.select_related('distributor'),
         )
         return render(request, 'admin/artist/artist_detail.html', context)
