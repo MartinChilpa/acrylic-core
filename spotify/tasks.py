@@ -47,11 +47,15 @@ def load_spotify_track_data(track_id, force=False):
     except Track.DoesNotExist:
         pass
     else:
-        fields = ['cover_image', 'snippet']
+        fields = ['name', 'cover_image', 'snippet']
         if force == True or any([getattr(track, field) in [None, ''] for field in fields]):
             spotify = spotify_client()
             track_info = spotify.track(f'spotify:track:{track.spotify_id}')
             album_images = track_info['album']['images']
+
+            # load name
+            if force or not track.name:
+                track.name = track_info['name']
 
             # load cover art
             if force or not track.cover_image:
