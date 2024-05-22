@@ -158,7 +158,7 @@ class Track(BaseModel):
 
         if load_ids:
             # async load spotify ids
-            load_spotify_id.delay(self.id)
+            load_spotify_id.delay(self.id, load_data=True)
             # async task to load charmetric ids
             load_chartmetric_ids.delay(self.id)
 

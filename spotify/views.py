@@ -19,8 +19,6 @@ class TrackPreviewViewSet(ViewSet):
             track_data = tracks[1]
             artist_data = track_data['artists'][0]
 
-            
-
             try:
                 image_url = track_data['album']['images'][0]['url']
             except KeyError:

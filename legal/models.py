@@ -1,8 +1,14 @@
 from django.db import models
 from common.models import BaseModel
+from common.storage import public_storage
 from catalog.validators import validate_isrc
 from legal.validators import validate_percent
 from legal.tasks import request_signatures_task
+from spotify.tasks import split_sheet_load_spotify_data_task
+
+
+def get_upload_path(instance, filename):
+    return f'split-sheets/{instance.uuid}/{filename}'
 
 
 class SplitSheet(BaseModel):
@@ -15,8 +21,10 @@ class SplitSheet(BaseModel):
     artist = models.ForeignKey('artist.Artist', related_name='split_sheets', on_delete=models.CASCADE)
     track = models.OneToOneField('catalog.Track', related_name='split_sheet', on_delete=models.CASCADE, blank=True, null=True)
     isrc = models.CharField('ISRC', max_length=12, validators=[validate_isrc], blank=True)
+    
     # alternative for when no track is selected
     track_name = models.CharField(max_length=150, blank=True)
+    track_cover_image = models.ImageField(upload_to=get_upload_path, storage=public_storage, blank=True)
 
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.CREATED)
     
@@ -29,8 +37,18 @@ class SplitSheet(BaseModel):
             return self.track.name
         return self.track_name
     
+    def save(self, *args, **kwargs):
+        # load external ids when object is created
+        load_track_data = False if not self.id else True
+        super(SplitSheet, self).save(*args, **kwargs)
+
+        if load_track_data:
+            # async load spotify track name/cover
+            split_sheet_load_spotify_data_task.delay(self.id)
+
     def request_signatures(self):
         request_signatures_task.delay(self.id)
+        return True
 
 
 class BaseSplitModel(BaseModel):
