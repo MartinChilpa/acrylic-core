@@ -89,7 +89,6 @@
 
 
   <h2>Tracks</h2>
-  {% with tracks=artist.tracks.all %}
   {% if tracks %}
     <table>
       <thead>
@@ -105,7 +104,7 @@
         <th>Updated</th>
       </thead>
       <tbody>
-      {% for track in artist.tracks.all %}
+      {% for track in tracks %}
         <tr>
           <td>{{ track.isrc }}</td>
           <td>{{ track.name }}</td>
@@ -130,7 +129,6 @@
     {% else %}
     <p>No tracks yet.</p>
   {% endif %}
-{% endwith %}
   
   <div>
 

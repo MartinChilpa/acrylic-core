@@ -32,11 +32,11 @@ class ArtistAdmin(admin.ModelAdmin):
         return custom_urls + urls
 
     def view_object(self, request, object_id, *args, **kwargs):
-        obj = get_object_or_404(Artist, pk=object_id)
+        artist = get_object_or_404(Artist, pk=object_id)
         context = dict(
             self.admin_site.each_context(request),
-            title=obj.name,
-            object=obj,
+            title=artist.name,
+            tracks=artist.tracks.select_related('distributor'),
         )
         return render(request, 'admin/artist/artist_detail.html', context)
 

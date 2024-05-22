@@ -64,6 +64,7 @@ registration_urls = (
 
         #path('register-email/', registration_views.register_email, name='register-email'),
         path('verify-email/', registration_views.verify_email, name='verify-email'),
+        path('verify-user/', registration_views.verify_user, name='verify-user'),
     ],
     'rest_registration',
 )
