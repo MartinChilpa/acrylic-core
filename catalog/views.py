@@ -51,7 +51,7 @@ class TrackViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Track.objects.select_related('artist').prefetch_related('genres', 'tags', 'additional_main_artists', 'featured_artists')  # Adjusted from Track.active.all() to simplify the example
     lookup_field = 'uuid'
     serializer_class = TrackSerializer
-    pagination_class = StandardPagination  # Ensure this is defined somewhere
+    pagination_class = StandardPagination
     filter_backends = [rest_filters.DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = TrackFilter
     search_fields = ['=uuid', '=isrc', 'name', 'artist__name']
@@ -60,6 +60,7 @@ class TrackViewSet(viewsets.ReadOnlyModelViewSet):
     
 class MyTrackViewSet(viewsets.ModelViewSet):
     serializer_class = MyTrackSerializer
+     pagination_class = StandardPagination
     permission_classes = [permissions.IsAuthenticated, IsArtistOwner]
     queryset = Track.objects.none()  # Default queryset is none, will be dynamically set in get_queryset
     lookup_field = 'uuid'
