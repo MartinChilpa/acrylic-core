@@ -11,10 +11,11 @@ from legal.serializers import SplitSheetSerializer,SplitSheetReadSerializer, Pub
 
 
 class SplitSheetFilter(rest_filters.FilterSet):
-    isrc = rest_filters.CharFilter()
+    isrc = rest_filters.CharFilter(field_name='isrc', lookup_expr='icontains')
     is_signed = rest_filters.BooleanFilter(method='filter_signed_present')
 
     def filter_signed_present(self, queryset, name, value):
+        return queryset
         if value:
             return queryset.exclude(signed=None)
         else:
