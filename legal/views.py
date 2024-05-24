@@ -38,7 +38,7 @@ class MySplitSheetViewSet(viewsets.ModelViewSet):
     #metadata_class = SimpleMetadata
 
     def get_queryset(self):
-        return self.request.user.artist.split_sheets.all()
+        return self.request.user.artist.split_sheets.order_by('-created')
 
     def perform_create(self, serializer):
         serializer.save(artist=self.request.user.artist)
