@@ -60,7 +60,7 @@ class TrackViewSet(viewsets.ReadOnlyModelViewSet):
     
 class MyTrackViewSet(viewsets.ModelViewSet):
     serializer_class = MyTrackSerializer
-     pagination_class = StandardPagination
+    pagination_class = StandardPagination
     permission_classes = [permissions.IsAuthenticated, IsArtistOwner]
     queryset = Track.objects.none()  # Default queryset is none, will be dynamically set in get_queryset
     lookup_field = 'uuid'
