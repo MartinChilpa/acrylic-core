@@ -195,9 +195,24 @@ class Track(BaseModel):
     def get_latest_signed_splitsheet(self):
         return self.split_sheets.exclude(signed=None).order_by('-signed').first()
 
-    def get_price(self):
-        return self.price or Price.objects.get(default=True)
-    
+    def get_price(self, user, use_type):
+        if not getattr(user, 'buyer'):
+            raise Exception('User is not a buyer')
+        if use_type not in ['single_use', 'subscription']:
+            raise Exception('Unknown use_type')
+        
+        # get price for a given user
+        if self.price:
+            # custom price
+            price = self.price
+        else:
+            # default price
+            price = Price.objects.get(default=True)
+        
+        tier_price = price.tier_prices.get(tier=user.buyer.tier)
+        amount = getattr(tier_price, f'{use_type}_price')
+        return amount
+
     def get_spotify_url(self):
         if self.spotify_id:
             return f'https://open.spotify.com/track/{self.spotify_id}'
