@@ -48,6 +48,18 @@ class PriceSerializer(serializers.ModelSerializer):
         return highest_price.single_use_price
 
 
+class MyPriceSerializer(PriceSerializer):
+    class Meta:
+        fields = PriceSerializer.Meta.fields + ['get_available_tracks']
+
+    def get_available_tracks(self, obj):
+        if obj.max_artist_tracks == 0:
+            return 'unlimited'
+        else:
+            artist = self.context['request'].user.artist
+            return artist.tracks.filter(price=obj).count() - obj.max_artist_tracks
+
+
 class MyTrackSerializer(serializers.ModelSerializer):
     artist = serializers.SlugRelatedField(slug_field='uuid', read_only=True)
     distributor = serializers.SlugRelatedField(slug_field='uuid', queryset=Distributor.objects.all(), required=False)

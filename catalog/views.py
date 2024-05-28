@@ -103,9 +103,17 @@ class GenreViewSet(viewsets.ReadOnlyModelViewSet):
     ordering_fields = ['name']
 
 
-class PriceSerializer(viewsets.ReadOnlyModelViewSet):
+class PriceViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = []
     authentication_classes = []
+    queryset = Price.objects.all()
+    serializer_class = PriceSerializer
+    pagination_class = StandardPagination
+    lookup_field = 'uuid'
+
+
+class MyPriceSerializer(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [permissions.IsAuthenticated]
     queryset = Price.objects.all()
     serializer_class = PriceSerializer
     pagination_class = StandardPagination

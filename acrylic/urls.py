@@ -27,7 +27,7 @@ router.register('tracks', catalog_views.TrackViewSet)
 router.register('genres', catalog_views.GenreViewSet)
 router.register('distributors', catalog_views.DistributorViewSet)
 router.register('synclists', catalog_views.SyncListViewSet)
-router.register('prices', catalog_views.PriceSerializer)
+router.register('prices', catalog_views.PriceViewSet)
 router.register('articles', content_views.ArticleViewSet)
 
 # spotify views
@@ -42,6 +42,8 @@ router.register('my-artist', artist_views.MyArtistViewSet)
 router.register('my-artist/tracks', catalog_views.MyTrackViewSet)
 router.register('my-artist/synclists', catalog_views.MySyncListViewSet)
 router.register('my-artist/split-sheets', legal_views.MySplitSheetViewSet)
+router.register('my-artist/prices', catalog_views.MyPriceSerializer)
+
 
 # buyer account
 # tbd
