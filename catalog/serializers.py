@@ -31,11 +31,21 @@ class TierPriceSerializer(serializers.ModelSerializer):
 
 class PriceSerializer(serializers.ModelSerializer):
     tier_prices = TierPriceSerializer(many=True, read_only=True)
+    min_price = serializers.SerializerMethodField()
+    max_price = serializers.SerializerMethodField()
 
     class Meta:
         model = Price
-        fields = ['uuid', 'name', 'description', 'max_artist_tracks', 'tier_prices', 'default', 'active', 'order']
-        queryset = Price.objects.prefetch_related('tier_prices', 'tier_prices__tier')
+        fields = ['uuid', 'name', 'description', 'max_artist_tracks', 'tier_prices', 'default', 'active', 'order', 'min_price', 'max_price']
+        queryset = Price.objects.prefetch_related('tier_prices', 'tier_prices__tier')    
+
+    def get_min_price(self, obj):
+        lowest_price = obj.tier_prices.order_by('subscription_price').first()
+        return lowest_price.subscription_price
+    
+    def get_max_price(self, obj):
+        highest_price = obj.tier_prices.order_by('-single_use_price').first()
+        return highest_price.single_use_price
 
 
 class MyTrackSerializer(serializers.ModelSerializer):
