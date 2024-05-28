@@ -37,7 +37,7 @@ class PriceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Price
         fields = ['uuid', 'name', 'description', 'max_artist_tracks', 'tier_prices', 'default', 'active', 'order', 'min_price', 'max_price']
-        queryset = Price.objects.prefetch_related('tier_prices', 'tier_prices__tier')    
+        queryset = Price.objects.prefetch_related('tier_prices', 'tier_prices__tier')
 
     def get_min_price(self, obj):
         lowest_price = obj.tier_prices.order_by('subscription_price').first()
@@ -50,14 +50,13 @@ class PriceSerializer(serializers.ModelSerializer):
 
 class MyPriceSerializer(PriceSerializer):
     class Meta:
+        model = Price
         fields = PriceSerializer.Meta.fields + ['get_available_tracks']
+        queryset = PriceSerializer.Meta.queryset
 
     def get_available_tracks(self, obj):
-        if obj.max_artist_tracks == 0:
-            return 'unlimited'
-        else:
-            artist = self.context['request'].user.artist
-            return artist.tracks.filter(price=obj).count() - obj.max_artist_tracks
+        artist = self.context['request'].user.artist
+        return artist.get_available_tracks()
 
 
 class MyTrackSerializer(serializers.ModelSerializer):

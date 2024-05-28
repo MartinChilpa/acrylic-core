@@ -42,7 +42,7 @@ router.register('my-artist', artist_views.MyArtistViewSet)
 router.register('my-artist/tracks', catalog_views.MyTrackViewSet)
 router.register('my-artist/synclists', catalog_views.MySyncListViewSet)
 router.register('my-artist/split-sheets', legal_views.MySplitSheetViewSet)
-router.register('my-artist/prices', catalog_views.MyPriceSerializer)
+router.register('my-artist/prices', catalog_views.MyPriceViewSet)
 
 
 # buyer account

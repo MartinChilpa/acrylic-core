@@ -11,7 +11,7 @@ from artist.permissions import IsArtistOwner, IsTrackArtistOwner
 from catalog.models import Distributor, Track, Genre, Price, SyncList, SyncListTrack
 from catalog.serializers import (
     DistributorSerializer, TrackSerializer, MyTrackSerializer, MyTrackReadSerializer, 
-    GenreSerializer, SyncListSerializer, SyncListTrackSerializer, PriceSerializer
+    GenreSerializer, SyncListSerializer, SyncListTrackSerializer, PriceSerializer, MyPriceSerializer
 )
 
 
@@ -112,10 +112,10 @@ class PriceViewSet(viewsets.ReadOnlyModelViewSet):
     lookup_field = 'uuid'
 
 
-class MyPriceSerializer(viewsets.ReadOnlyModelViewSet):
+class MyPriceViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     queryset = Price.objects.all()
-    serializer_class = PriceSerializer
+    serializer_class = MyPriceSerializer
     pagination_class = StandardPagination
     lookup_field = 'uuid'
 

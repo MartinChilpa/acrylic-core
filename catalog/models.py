@@ -67,7 +67,7 @@ class Price(BaseModel):
             models.Index(fields=['order']),
         ]
 
-    def get_available_slots(self, artist):
+    def get_available_tracks(self, artist):
         if self.max_artist_tracks > 0:
             return self.max_artist_tracks - artist.tracks.filter(price=self).count()
         return 'unlimited'
