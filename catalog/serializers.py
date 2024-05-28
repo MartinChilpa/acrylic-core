@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from taggit.models import Tag
-from catalog.models import Distributor, Genre, Price, Track, SyncList, SyncListTrack
-
+from catalog.models import Distributor, Genre, Price, TierPrice, Track, SyncList, SyncListTrack
+from buyer.serializers import TierSerializer
 
 class DistributorSerializer(serializers.ModelSerializer):
     class Meta:
@@ -21,10 +21,21 @@ class GenreSerializer(serializers.ModelSerializer):
         fields = ['uuid', 'name', 'code']
 
 
+class TierPriceSerializer(serializers.ModelSerializer):
+    tier = TierSerializer(many=False, read_only=True)
+
+    class Meta:
+        model = TierPrice
+        fields = ['tier', 'single_use_price', 'subscription_price']
+
+
 class PriceSerializer(serializers.ModelSerializer):
+    tier_prices = TierPriceSerializer(many=True, read_only=True)
+
     class Meta:
         model = Price
-        fields = ['uuid', 'name', 'description', 'single_use_price', 'max_artist_tracks', 'default', 'active', 'order']
+        fields = ['uuid', 'name', 'description', 'max_artist_tracks', 'tier_prices', 'default', 'active', 'order']
+        queryset = Price.objects.prefetch_related('tier_prices', 'tier_prices__tier')
 
 
 class MyTrackSerializer(serializers.ModelSerializer):
