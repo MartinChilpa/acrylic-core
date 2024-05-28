@@ -58,7 +58,7 @@ class MyPriceSerializer(PriceSerializer):
 
     def get_available_tracks(self, obj):
         artist = self.context['request'].user.artist
-        return artist.get_available_tracks()
+        return obj.get_available_tracks(artist)
 
 
 class MyTrackSerializer(serializers.ModelSerializer):
