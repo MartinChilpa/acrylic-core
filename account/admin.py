@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from account.models import Account, Document
+from account.models import Account, Document, Invitation
 
 
 @admin.register(Account)
@@ -16,3 +16,10 @@ class DocumentAdmin(admin.ModelAdmin):
     list_filter = ['type']
     search_fields = ['uuid', 'name']
     raw_id_fields = ['user']
+
+
+@admin.register(Invitation)
+class InvitationAdmin(admin.ModelAdmin):
+    list_display = ['email', 'joined', 'created', 'updated']
+    search_fields = ['email']
+

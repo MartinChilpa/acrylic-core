@@ -64,3 +64,13 @@ class Document(BaseModel):
     def __str__(self):
         return self.name
 
+
+class Invitation(BaseModel):
+    email = models.EmailField()
+    joined = models.BooleanField()
+
+    def __str__(self):
+        return self.email
+
+
+
