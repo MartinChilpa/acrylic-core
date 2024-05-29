@@ -339,8 +339,10 @@ HUBSPOT_ACCESS_TOKEN = config('HUBSPOT_ACCESS_TOKEN', default='')
 
 # Chartmetric API
 CHARTMETRIC_REFRESH_TOKEN = config('CHARTMETRIC_REFRESH_TOKEN', default='sZBgq3RceskBkFnjc8YNDm0LUJ7swpuqk6NL4CyEYnlkL5NVpFx2WU8cGwAD7XlZ')
+# jeremy: O7gYTjDXBHdLeHEcHH5WVBTFFDrJpPeev6HCjk5LHZ8sBCJFhYfIWmCDGxIU64OS
 
 # Spotify API
+
 SPOTIFY_CLIENT_ID = config('SPOTIFY_CLIENT_ID', default='')
 SPOTIFY_CLIENT_SECRET = config('SPOTIFY_CLIENT_SECRET', default='')
 
@@ -364,7 +366,7 @@ SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
     'https://www.googleapis.com/auth/userinfo.profile',
 ]
 
-ARTIST_PROFILE_BASE_URL = os.environ.get('ARTIST_PROFILE_BASE_URL', 'https://acrylic.la/artists/')
+ARTIST_PROFILE_BASE_URL = os.environ.get('ARTIST_PROFILE_BASE_URL', 'https://app.acrylic.la/profile')
 
 # Activate Django-Heroku.
 django_heroku.settings(locals())
