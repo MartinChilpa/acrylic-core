@@ -1,5 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
+from import_export import resources
+from import_export.admin import ImportExportModelAdmin
 from account.models import Account, Document, Invitation
 
 
@@ -18,8 +20,13 @@ class DocumentAdmin(admin.ModelAdmin):
     raw_id_fields = ['user']
 
 
+class InvitationResource(resources.ModelResource):
+    class Meta:
+        model = Invitation
+
+
 @admin.register(Invitation)
-class InvitationAdmin(admin.ModelAdmin):
+class InvitationAdmin(ImportExportModelAdmin):
     list_display = ['email', 'joined', 'created', 'updated']
     search_fields = ['email']
-
+    resource_classes = [InvitationResource]

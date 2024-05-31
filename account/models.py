@@ -67,7 +67,7 @@ class Document(BaseModel):
 
 class Invitation(BaseModel):
     email = models.EmailField(unique=True)
-    joined = models.BooleanField(editable=False)
+    joined = models.BooleanField(editable=False, default=False)
 
     def __str__(self):
         return self.email
