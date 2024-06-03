@@ -5,6 +5,16 @@ from import_export.admin import ImportExportModelAdmin
 from account.models import Account, Document, Invitation
 
 
+class ImportExportResource(resources.ModelResource):
+    def get_import_fields(self):
+        fields = super().get_import_fields()
+        return [f for f in fields if f.attribute in self._meta.import_fields]
+
+    def get_export_fields(self):
+        fields = super().get_export_fields()
+        return [f for f in fields if f.attribute in self._meta.export_fields]
+
+
 @admin.register(Account)
 class AccountAdmin(admin.ModelAdmin):
     list_display = ['uuid', 'user', 'billing_email', 'phone', 'tax_id', 'created', 'updated']
@@ -20,12 +30,11 @@ class DocumentAdmin(admin.ModelAdmin):
     raw_id_fields = ['user']
 
 
-class InvitationResource(resources.ModelResource):
-    def get_import_fields(self):
-        return['email']        
+class InvitationResource(ImportExportResource):
     class Meta:
         model = Invitation
-        fields = ['uuid', 'email', 'joined', 'created', 'updated']
+        import_fields = ['email']
+        export_fields = ['uuid', 'email', 'joined', 'created', 'updated']
 
 
 @admin.register(Invitation)
