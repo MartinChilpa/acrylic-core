@@ -368,6 +368,11 @@ SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
 
 ARTIST_PROFILE_BASE_URL = os.environ.get('ARTIST_PROFILE_BASE_URL', 'https://app.acrylic.la/profile')
 
+# django-import-export
+from import_export.formats.base_formats import CSV, XLSX
+IMPORT_FORMATS = [CSV, XLSX]
+EXPORT_FORMATS = [CSV, XLSX]
+
 # Activate Django-Heroku.
 django_heroku.settings(locals())
 
