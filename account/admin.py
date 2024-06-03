@@ -23,6 +23,8 @@ class DocumentAdmin(admin.ModelAdmin):
 class InvitationResource(resources.ModelResource):
     class Meta:
         model = Invitation
+        import_order = ['email']
+        export_order = ['uuid', 'email', 'joined', 'created', 'updated']
 
 
 @admin.register(Invitation)

@@ -3,7 +3,7 @@ from rest_framework import serializers, fields
 from rest_registration.api.serializers import DefaultUserProfileSerializer, DefaultRegisterUserSerializer
 from django.contrib.auth import get_user_model
 from artist.models import Artist
-from account.models import Account, Document
+from account.models import Account, Document, Invitation
 
 
 User = get_user_model()
@@ -33,6 +33,10 @@ class RegisterSerializer(DefaultRegisterUserSerializer):
         model = User
     
     def validate_email(self, value):
+        # invite
+        if not Invitation.objects.filter(email=value).exists():
+            raise serializers.ValidationError('User with this email has not been invited')
+
         if User.objects.filter(email=value).exists():
             raise serializers.ValidationError('User with this email already exists')
         return value
@@ -56,6 +60,13 @@ class RegisterSerializer(DefaultRegisterUserSerializer):
         user = self.Meta.model.objects.create_user(**data)
         # create related account
         Account.objects.create(user=user)
+
+        # mark invitation as joined
+        invitations = Invitation.objects.filter(email=user.email)
+        if len(invitations) > 0:
+            invitation = invitations[0]
+            invitation.joined = True
+            invitation.save()
 
         if user_type == 'artist':
             # create related artist profile
