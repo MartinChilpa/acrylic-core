@@ -31,10 +31,10 @@ class Signwell():
         )
         return response
     
-    def check_signature(self, params):    
+    def check_signature(self, event):    
         # expected signature
-        data = params['event']['type'] + '@' + str(params['event']['time'])
-        expected_signature = params['event']['hash']
+        data = event['type'] + '@' + str(event['time'])
+        expected_signature = event['hash']
 
         # calculated signature
         calculated_signature = hmac.new(self.api_key.encode('utf-8'), data.encode('utf-8'), hashlib.sha256).hexdigest()

@@ -1,3 +1,5 @@
+import datetimes
+import json
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
@@ -9,7 +11,7 @@ from legal.signwell import Signwell
 @require_POST
 def hellosign_webhook(request):
     if request.method == 'POST':
-        data = request.POST
+        data = json.loads(request.body)
         event = data.get('event')
         
         signed_date = None
@@ -42,7 +44,6 @@ def signwell_webhook(request):
         event = data.get('event')
         
         sign_backend = Signwell()
-        
         if sign_backend.check_signature(data):
             # signature valid
         
