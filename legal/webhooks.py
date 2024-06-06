@@ -2,7 +2,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 from legal.models import SplitSheet
-from legal import signwell
+from legal.signwell import Signwell
 
 
 @csrf_exempt
