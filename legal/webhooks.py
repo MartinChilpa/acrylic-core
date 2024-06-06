@@ -20,7 +20,7 @@ def signwell_webhook(request):
         
             signed_date = None
             if event['type'] == 'document_completed':
-                signature_request_id = data['object']['id']
+                signature_request_id = data['data']['object']['id']
                 #signatures = data['signature_request']['signatures']
                 #for signature in signatures:
                 #    # The signed_date might be in UNIX timestamp format
