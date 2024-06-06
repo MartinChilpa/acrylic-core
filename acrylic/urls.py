@@ -107,7 +107,7 @@ urlpatterns = [
     ])),
 
     # Dropbox Sign
-    path(f'legal/webhooks/dropbox-sign/', legal_webhooks.hellosign_webhook, name='dropbox_sign_webhook'),
+    path(f'legal/webhooks/signwell/', legal_webhooks.signwell_webhook, name='sign_webhook'),
 
 ]
 
