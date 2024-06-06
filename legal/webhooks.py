@@ -20,20 +20,17 @@ def signwell_webhook(request):
         
             signed_date = None
             if event['type'] == 'document_completed':
-                signature_request_id = data.get('signature_request_id')
-                signatures = data['signature_request']['signatures']
-                for signature in signatures:
-                    # The signed_date might be in UNIX timestamp format
-                    signed_timestamp = signature.get('signed_at')
-                    if signed_timestamp:
-                        # Convert the UNIX timestamp to a datetime object
-                        signed_date = datetime.utcfromtimestamp(int(signed_timestamp))
-                        print(f"Document was signed on: {signed_date}")
+                signature_request_id = data['object']['id']
+                #signatures = data['signature_request']['signatures']
+                #for signature in signatures:
+                #    # The signed_date might be in UNIX timestamp format
+                #    signed_timestamp = signature.get('signed_at')
+                #    if signed_timestamp:
+                #        # Convert the UNIX timestamp to a datetime object
+                #        signed_date = datetime.utcfromtimestamp(int(signed_timestamp))
+                #        print(f"Document was signed on: {signed_date}")
 
-            if signed_date:
-                # Here you would update the MasterSplit instance with the datetime of signing
-                # This is a simplified example. You will need to map the signature_request_id to your MasterSplit instance appropriately.
-                SplitSheet.objects.filter(signature_request_id=signature_request_id).update(signed=signed_date, status=SplitSheet.Status.SIGNED)
+            SplitSheet.objects.filter(signature_request_id=signature_request_id).update(signed=datetime.datetime.now(), status=SplitSheet.Status.SIGNED)
             return JsonResponse({'status': 'success'})
         return JsonResponse({'status': 'bad request'}, status=400)
 
