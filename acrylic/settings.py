@@ -330,6 +330,10 @@ SIMPLE_JWT = {
 # Sorl thumbnail settings 
 THUMBNAIL_FORCE_OVERWRITE = True
 
+# SignWell
+SIGNWELL_API_KEY = config('SIGNWELL_API_KEY', default='')
+SIGNWELL_TEST_MODE = True
+
 # Dropbox Sign
 DROPBOX_SIGN_API_KEY = config('DROPBOX_SIGN_API_KEY', default='')
 

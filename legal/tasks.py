@@ -1,8 +1,7 @@
 import celery
 from django.apps import apps
 from acrylic.celery import app
-from legal.sign import send_signature_request_for_ownership_validation
-
+from legal.sign import splitsheet_request_signatures
 
 
 @app.task
@@ -13,5 +12,5 @@ def request_signatures_task(split_sheet_id):
     except SplitSheet.DoesNotExist:
         pass
     else:
-        send_signature_request_for_ownership_validation(split_sheet)
+        splitsheet_request_signatures(split_sheet)
     return True
