@@ -85,7 +85,7 @@ class Command(BaseCommand):
                     'artist': artist,
                     'duration': int(track_info['duration_ms']),
                     'released': release_date,
-                    'spotify_url': track_info['external_urls'].get('spotify'),
+                    #'spotify_url': track_info['external_urls'].get('spotify'),
                     'spotify_popularity': int(track_info['popularity']),
                 }
             )

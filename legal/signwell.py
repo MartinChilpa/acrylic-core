@@ -31,7 +31,7 @@ class Signwell():
         )
         return response
     
-    def check_signature(params):    
+    def check_signature(self, params):    
         # expected signature
         data = params['event']['type'] + '@' + str(params['event']['time'])
         expected_signature = params['event']['hash']
