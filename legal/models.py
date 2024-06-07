@@ -50,6 +50,12 @@ class SplitSheet(BaseModel):
         request_signatures_task.delay(self.id)
         return True
 
+    def get_track_name(self):
+        if self.track:
+            return self.track.name
+        else:
+            return self.track_name
+
 
 class BaseSplitModel(BaseModel):
     name = models.CharField(max_length=250)

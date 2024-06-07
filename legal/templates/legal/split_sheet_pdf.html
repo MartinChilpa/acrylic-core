@@ -7,25 +7,25 @@
     <h1>SOUND RECORDING + MUSICAL COMPOSITION RIGHTSHOLDER SPLIT CONFIRMATION</h1>
 
     <ul>
-        <li>Track name: {{ track.name }}</li>
-        <li>ISRC: {{ track.isrc }}</li>
-        <li>Artist: {{ track.artist.name }}</li>
+        <li>Track name: {{ split_sheet.get_track_name }}</li>
+        <li>ISRC: {{ split_sheet.isrc }}</li>
+        <li>Artist: {{ split_sheet.artist.name }}</li>
     </ul>
     <p>
         This is to confirm that we, the undersigned are the sole owners (each an “Owner,” collectively, the “Owners”) of the sound recording (the “Sound Recording”) and the composition the “Composition”) listed below, and the Owners hereby agree to the ownership percentages set forth below. The Owners hereby acknowledge that each Owner (or their respective publishers, designees, assignees, successors in interest, as applicable) shall jointly own and control in perpetuity, in the worldwide right, title and interest, of every nature, kind and description in the percentages indicated below in and to the Composition and the Sound Recording including but not limited to, the worldwide copyright therein and any and all extensions, renewals and revised terms of such copyright, subject to any third party interests or claims which may arise in connection therewith.  
     </p>
     
-    <h2>Sound recording "{{ track.name }}"</h2>
+    <h2>Sound recording "{{ split_sheet.get_track_name }}"</h2>
     <ul>
         {% for split in split_sheet.master_splits.all %}
-            <li>{{ split.owner_name }} ({{ split.owner_email }}) owns {{ split.percent }}%</li>
+            <li>{{ split.legal_name }} ({{ split.email }}) owns {{ split.percent }}%</li>
         {% endfor %}
     </ul>
 
-    <h2>Composition "{{ track.name }}"</h2>
+    <h2>Composition "{{ split_sheet.get_track_name }}"</h2>
     <ul>
         {% for split in split_sheet.publishing_splits.all %}
-            <li>{{ split.owner_name }} ({{ split.owner_email }}) owns {{ split.percent }}%</li>
+            <li>{{ split.legal_name }} ({{ split.email }}) owns {{ split.percent }}%</li>
         {% endfor %}
     </ul>
     <p>
