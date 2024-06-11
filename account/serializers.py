@@ -73,7 +73,7 @@ class RegisterSerializer(DefaultRegisterUserSerializer):
             # create related artist profile
             artist = Artist.objects.create(user=user)
             # request contract signature
-            request_contract_signature_task.delay(artist_id)
+            request_contract_signature_task.delay(artist.id)
         
         #profile_data = validated_data.pop('profile')
         # update profile
