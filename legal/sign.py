@@ -26,6 +26,15 @@ def contract_request_signature(artist):
         Acrylic.LA
     """
 
+    # Save the PDF to a model instance
+    document = Document(
+        type=Document.Type.CONTRACT,
+        user=artist.user,
+        name=document_name
+    )
+    document.document.save('contract.pdf', ContentFile(pdf_file))
+    document.save()
+    
     # Construct the payload
     emails = [(artist.user.email, artist.name)]
     signwell = Signwell()
@@ -34,15 +43,8 @@ def contract_request_signature(artist):
     if response.status_code == 201:
         # created
         data = response.json()
-        
-        # Save the PDF to a model instance
-        document = Document(
-            type=Document.Type.CONTRACT,
-            user=artist.user,
-            name=document_name,
-            signature_request_id=data['id']
-        )
-        document.document.save('contract.pdf', ContentFile(pdf_file))
+        # Save the signature request ID
+        document.signature_request_id = data['id']
         document.save()
     return True
 
