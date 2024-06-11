@@ -18,6 +18,16 @@ def contract_request_signature(artist):
     html_string = render_to_string('legal/artist_contract_pdf.html', {'artist': artist})
     pdf_file = weasyprint.HTML(string=html_string).write_pdf()
 
+    # Save the PDF to a model instance
+    document = Document(
+        type=Document.Type.CONTRACT,
+        user=artist.user,
+        name=document_name
+    )
+    document.save()
+    document.document.save('contract.pdf', ContentFile(pdf_file))
+    document.save()
+
     subject = f'Sign the {document_name}'
     message = f"""
         Please sign the Acrylic.la {document_name}.
@@ -26,15 +36,6 @@ def contract_request_signature(artist):
         Acrylic.LA
     """
 
-    # Save the PDF to a model instance
-    document = Document(
-        type=Document.Type.CONTRACT,
-        user=artist.user,
-        name=document_name
-    )
-    document.document.save('contract.pdf', ContentFile(pdf_file))
-    document.save()
-    
     # Construct the payload
     emails = [(artist.user.email, artist.name)]
     signwell = Signwell()
