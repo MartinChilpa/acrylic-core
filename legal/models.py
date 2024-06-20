@@ -66,8 +66,8 @@ class SplitSheet(BaseModel):
 
 
 class BaseSplitModel(BaseModel):
-    name = models.CharField(max_length=250)
-    legal_name = models.CharField(max_length=250, blank=True)
+    name = models.CharField('full legal name', max_length=250)
+    #legal_name = models.CharField(max_length=250, blank=True)
     email = models.EmailField()
     percent = models.DecimalField(max_digits=5, decimal_places=2)
     signed = models.DateTimeField(blank=True, null=True, default=None)

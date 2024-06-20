@@ -55,8 +55,8 @@ def splitsheet_request_signatures(split_sheet):
     SplitSheet = apps.get_model('legal', 'SplitSheet')
 
     # avoid repeating signature request for same email in master/publishing splits
-    master_emails = split_sheet.master_splits.values_list('email', 'legal_name')
-    publishing_emails = split_sheet.publishing_splits.values_list('email', 'legal_name')
+    master_emails = split_sheet.master_splits.values_list('email', 'name')
+    publishing_emails = split_sheet.publishing_splits.values_list('email', 'name')
 
     # remove master/publishing duplicates
     emails = list(set(list(master_emails) + list(publishing_emails)))

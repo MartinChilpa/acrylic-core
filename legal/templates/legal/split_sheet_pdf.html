@@ -18,14 +18,14 @@
     <h2>Sound recording "{{ split_sheet.get_track_name }}"</h2>
     <ul>
         {% for split in split_sheet.master_splits.all %}
-            <li>{{ split.legal_name }} ({{ split.email }}) owns {{ split.percent }}%</li>
+            <li>{{ split.name }} ({{ split.email }}) owns {{ split.percent }}%</li>
         {% endfor %}
     </ul>
 
     <h2>Composition "{{ split_sheet.get_track_name }}"</h2>
     <ul>
         {% for split in split_sheet.publishing_splits.all %}
-            <li>{{ split.legal_name }} ({{ split.email }}) owns {{ split.percent }}%</li>
+            <li>{{ split.name }} ({{ split.email }}) owns {{ split.percent }}%</li>
         {% endfor %}
     </ul>
     <p>

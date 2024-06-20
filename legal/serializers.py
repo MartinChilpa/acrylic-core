@@ -7,13 +7,13 @@ from legal.models import SplitSheet, MasterSplit, PublishingSplit
 class MasterSplitSerializer(serializers.ModelSerializer):
     class Meta:
         model = MasterSplit
-        fields = ['uuid', 'role',  'name', 'legal_name', 'email', 'percent', 'signed']
+        fields = ['uuid', 'role',  'name', 'email', 'percent', 'signed']
 
 
 class PublishingSplitSerializer(serializers.ModelSerializer):
     class Meta:
         model = PublishingSplit
-        fields = ['uuid', 'role', 'name', 'legal_name', 'email', 'percent', 'signed', 'pro_name', 'ipi']
+        fields = ['uuid', 'role', 'name', 'email', 'percent', 'signed', 'pro_name', 'ipi']
 
 
 
