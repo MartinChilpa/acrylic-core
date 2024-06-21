@@ -1,49 +1,88 @@
+{% load static %}
+{% with legal_name=artist.user.get_full_name %}
 <html>
 <head>
     <title>Master Recording and Compositions Synchronization Representation Agreement</title>
 </head>
 <body>
-<p>
+<p class="center">
+  <img src="{% static "img/acrylic-logo-pdf.jpg" %}" style="width:2.5cm;">
+  <br><br>
 	Acrylic, Inc<br>
 	108 W. 13th Street, Suite 100<br>
 	Wilmington, DE 19801
 </p>
-<p>Date:  {{ now|date:"d m Y" }}</p>
+<p>Date:  {% now|date:"d m Y" %}</p>
 
 <h2>LICENSOR</h2>
 
-<p>Legal Name: {{ artist.user.get_full_name }}</p>
+<p>Legal Name: {{ legal_name }}</p>
 
-<p>Artist Name(s):	{{ artist.name }}</p>
+<p>Artist Name(s): {{ artist.name }}</p>
 
 <!--<p>Address:	_____________________________________</p>-->
 
 <p>Email: {{ artist.user.email }}</p>
 
-<p>Re:  Master Recording and Compositions Synchronization Representation Agreement</p>
+<p>Re: <strong>Master Recording and Compositions Synchronization Representation Agreement</strong></p>
 
 <p>Gentlepersons:</p>
 
-<p>This letter agreement (the “Agreement”) sets forth the material terms of the agreement between ______________ (hereinafter “Licensor”, “you” and “your”) on the one hand and Acrylic, Inc (“Company”) on the other.</p>
+<p>This letter agreement (the “Agreement”) sets forth the material terms of the agreement between {{ legal_name }} (hereinafter “Licensor”, “you” and “your”) on the one hand and Acrylic, Inc (“Company”) on the other.</p>
 
 <h2>1. Engagement:</h2>
 
-<p>(a) During the Term, in the Territory, you hereby authorize and appoint Company to be your representative for the purpose of locating and exploiting, on the terms set forth herein, commercial licensing opportunities for all of the master recordings and compositions which are owned by you or your affiliates at any time during the Term and delivered to Company, the titles thereof are set forth on the Schedule A attached hereto (hereinafter, collectively, the “Works”) which shall be updated from time to time as you deliver additional Works to Company. Licensing opportunities shall include, without limitation, use of the Works within films, television productions, commercial advertisements, documentaries, soundtracks, compilation albums, interactive media and software, and video games (the aforementioned uses being hereinafter referred to as “Synch Uses”).  The rights in the Works to be licensed hereunder, together with the right to license the non-exclusive use of your name and approved likeness in conjunction with such rights, are collectively referred to herein as the “Rights.”  It is understood and agreed that Company’s representation rights hereunder extend to worldwide licenses of the Works for Synch Uses, provided the relevant licensing opportunity originates in the Territory.  In the event you enter into an agreement for exclusive services as a recording artist with a third-party recording label, you will cause such agreement to include an acknowledgement of this agreement, including Company’s rights and entitlements hereunder, subject subparagraphs 2(b) and 2(c) below.</p>
-<p>(b) For web-based, automated checkout licensing, Company shall exclusively represent Licensor’s Works for such licensing pursuant to the terms set forth on Company’s website(s). At no time during the Term shall the Licensor deliver the Works or any other Compositions or Masters to a third-party web-based licensing company who license via a digital or automated outlet. In connection with such web-based licensing, Licensor grants to Company the right to stream the Works on Company’s website on a gratis basis. At no time while this Agreement is in effect shall the Licensor deliver any Works to other web-based licensing companies who license via a digital or automated outlet.</p>
-<p>(c) For all other licensing opportunities outside the scope of Company’s onsite options, whereby licenses are required to be secured ‘offsite,’ that is, not through the automated checkout process via Company’s website(s), Company shall non-exclusively represent the Works.</p>
-<p>(d) Licenses shall only be subject to Licensor’s written approval when uses of the Works involve (i) use in a film or television program which, at the time of the license, Company knows bears or will bear a rating of “NC-17”, “X” or the equivalent, (ii) use in a political campaign or advertisement relating to a political campaign or (iii) use in a commercial for alcohol, tobacco, firearms or personal hygiene product.</p>
+<p clas="l1">
+	<span>(a)</span>
+	During the Term, in the Territory, you hereby authorize and appoint Company to be your representative for the purpose of locating and exploiting, on the terms set forth herein, commercial licensing opportunities for all of the master recordings and compositions which are owned by you or your affiliates at any time during the Term and delivered to Company, the titles thereof are set forth on the Schedule A attached hereto (hereinafter, collectively, the “Works”) which shall be updated from time to time as you deliver additional Works to Company. Licensing opportunities shall include, without limitation, use of the Works within films, television productions, commercial advertisements, documentaries, soundtracks, compilation albums, interactive media and software, and video games (the aforementioned uses being hereinafter referred to as “Synch Uses”).  The rights in the Works to be licensed hereunder, together with the right to license the non-exclusive use of your name and approved likeness in conjunction with such rights, are collectively referred to herein as the “Rights.”  It is understood and agreed that Company’s representation rights hereunder extend to worldwide licenses of the Works for Synch Uses, provided the relevant licensing opportunity originates in the Territory.  In the event you enter into an agreement for exclusive services as a recording artist with a third-party recording label, you will cause such agreement to include an acknowledgement of this agreement, including Company’s rights and entitlements hereunder, subject subparagraphs 2(b) and 2(c) below.</p>
+</p>
+<p clas="l1">
+	<span>(b)</span>
+	For web-based, automated checkout licensing, Company shall exclusively represent Licensor’s Works for such licensing pursuant to the terms set forth on Company’s website(s). At no time during the Term shall the Licensor deliver the Works or any other Compositions or Masters to a third-party web-based licensing company who license via a digital or automated outlet. In connection with such web-based licensing, Licensor grants to Company the right to stream the Works on Company’s website on a gratis basis. At no time while this Agreement is in effect shall the Licensor deliver any Works to other web-based licensing companies who license via a digital or automated outlet.</p>
+</p>
+<p clas="l1">
+	<span>(c)</span>
+	For all other licensing opportunities outside the scope of Company’s onsite options, whereby licenses are required to be secured ‘offsite,’ that is, not through the automated checkout process via Company’s website(s), Company shall non-exclusively represent the Works.</p>
+</p>
+<p clas="l1">
+	<span>(d)</span>
+	<p>Licenses shall only be subject to Licensor’s written approval when uses of the Works involve (i) use in a film or television program which, at the time of the license, Company knows bears or will bear a rating of “NC-17”, “X” or the equivalent, (ii) use in a political campaign or advertisement relating to a political campaign or (iii) use in a commercial for alcohol, tobacco, firearms or personal hygiene product.</p>
+</p>
 
 <h2>2. Royalties:</h2>
 
 <p>Licensor agrees to pay Company on any and all fees and royalties derived from the efforts of Company, including but not limited to master use license fees, synchronization fees, soundtrack album advances, and any other fees and royalties derived from direct efforts of Company. Company shall pay Licensor the following royalty splits of Net Receipts (as defined in paragraph 3(d)) with respect to any Secured Use (as defined in paragraph 3(e)), as provided below.</p>
 
-<p>(a) Synchronization Royalties: For any Secured Use synchronization license(s), Licensor shall be entitled to receive FIFTY PERCENT (50%) of the Net Receipts. The Composition and Master shall be licensed and paid on an equal basis.</p>
-<p>(b) Non-Synchronization Royalties: For all other Secured Use non-synchronization royalties, including, mechanical, performance, print, master use and other income derived from soundtracks, secured compilations and other Secured Use, Licensor shall be entitled to receive FIFTY PERCENT (50%) of the Net Receipts. The Composition and Master shall be licensed and paid on an equal basis, as applicable.</p>
-<p>(c) All royalty payments will be prorated to reflect Licensor’s actual ownership of an applicable Composition and/or Master.</p>
-<p>(d) “Net Receipts” shall mean the gross amounts actually received by Company in the US, after deduction of (i) any actual, out of pocket non- overhead costs or expenses and (ii) exploitation costs or expenses. For avoidance of doubt, all royalty payments will be prorated to reflect Licensor’s actual ownership of an applicable Composition and/or Master. Company’s rights to collect monies shall include the right to collect any sums for extensions and/or replacements of any applicable licenses, option fees, advances, royalties and residuals.</p>
-<p>(e) “Secured Use” shall mean any use, license and/or income (i) secured by Company in relation to any Composition and/or Master, and/or (ii) licensed to any customer, client or licensing party that is currently or formerly serviced by Company.</p>
-<p>(f) Notwithstanding the foregoing, subject to Licensor: (i)  in conjunction with each new release by Licensor, but no less than once per month, sharing links on its social media accounts (Instagram, X, etc.) to Licensor’s profile on Company’s website (the “Licensor’s Profile”); (ii) displaying links to Licensor’s Profile anywhere Licensor displays links to its Spotify profile (or other DSP profiles, including, but not limited to on multi-store links such as Linkfire and Feature.FM; and, (iii) displaying a “We Are With Acrylic” video short or similar promotional video on Licensor’s social media accounts within two (2) weeks of the Effective Date (collectively, the “Promotional Services”), your share of the Net Receipts payable to Licensor pursuant to paragraphs 2(a) and 2(b) above shall be increased to Seventy Percent (70%).</p>
-<p>(g) For the avoidance of doubt, Company, at its sole discretion, reserves the right to immediately discontinue payment of the increased payments of Net Receipts pursuant to paragraph 2(f) in the event Licensor does not fully perform the Promotional Services.</p>
+</p>
+<p clas="l1">
+	<span>(a)</span>
+	Synchronization Royalties: For any Secured Use synchronization license(s), Licensor shall be entitled to receive FIFTY PERCENT (50%) of the Net Receipts. The Composition and Master shall be licensed and paid on an equal basis.</p>
+</p>
+</p>
+<p clas="l1">
+	<span>(b)</span>
+	Non-Synchronization Royalties: For all other Secured Use non-synchronization royalties, including, mechanical, performance, print, master use and other income derived from soundtracks, secured compilations and other Secured Use, Licensor shall be entitled to receive FIFTY PERCENT (50%) of the Net Receipts. The Composition and Master shall be licensed and paid on an equal basis, as applicable.</p>
+</p>
+<p clas="l1">
+	<span>(c)</span>
+  All royalty payments will be prorated to reflect Licensor’s actual ownership of an applicable Composition and/or Master.</p>
+</p>
+<p clas="l1">
+	<span>(d)</span>
+  “Net Receipts” shall mean the gross amounts actually received by Company in the US, after deduction of (i) any actual, out of pocket non- overhead costs or expenses and (ii) exploitation costs or expenses. For avoidance of doubt, all royalty payments will be prorated to reflect Licensor’s actual ownership of an applicable Composition and/or Master. Company’s rights to collect monies shall include the right to collect any sums for extensions and/or replacements of any applicable licenses, option fees, advances, royalties and residuals.</p>
+</p>
+<p clas="l1">
+	<span>(e)</span>
+  “Secured Use” shall mean any use, license and/or income (i) secured by Company in relation to any Composition and/or Master, and/or (ii) licensed to any customer, client or licensing party that is currently or formerly serviced by Company.</p>
+</p>
+<p clas="l1">
+	<span>(f)</span>
+  Notwithstanding the foregoing, subject to Licensor: (i)  in conjunction with each new release by Licensor, but no less than once per month, sharing links on its social media accounts (Instagram, X, etc.) to Licensor’s profile on Company’s website (the “Licensor’s Profile”); (ii) displaying links to Licensor’s Profile anywhere Licensor displays links to its Spotify profile (or other DSP profiles, including, but not limited to on multi-store links such as Linkfire and Feature.FM; and, (iii) displaying a “We Are With Acrylic” video short or similar promotional video on Licensor’s social media accounts within two (2) weeks of the Effective Date (collectively, the “Promotional Services”), your share of the Net Receipts payable to Licensor pursuant to paragraphs 2(a) and 2(b) above shall be increased to Seventy Percent (70%).</p>
+</p>
+<p clas="l1">
+	<span>(g)</span>
+  For the avoidance of doubt, Company, at its sole discretion, reserves the right to immediately discontinue payment of the increased payments of Net Receipts pursuant to paragraph 2(f) in the event Licensor does not fully perform the Promotional Services.</p>
+</p>
 
 <h2>3. Additional Terms/ Subscription Catalog:</h2>
 
@@ -51,13 +90,26 @@
 
 <h2>4. Payments:</h2>
 
-<p>(a) Payments will be based on actual money received by Company. Company agrees to render accounting statements to Licensor, as to amounts due Licensor, if any, on a quarterly basis on or around the tenth (10th) day of any new quarter, which shall include amounts received by Company during the preceding quarter. This accounting period may be changed from time to time in Company’s sole discretion. No payment will be due unless the Works are actually used and payments are received by Company. In the event that the Works are used, Licensor will be paid after Company receives such payment.</p>
-<p>(b) In the event any royalties related to any Secured Use is sent to Licensor, then Licensor warrants and represents that it shall forward copies of all statements for the Works along with any and all payment due to Company for its share of royalties that are derived from any and all Secured Uses. Such statements and payments must be sent to Company at the address above within thirty (30) days of Licensor’s receipt of such royalties. Company shall have the right to audit all royalties and statements related to uses secured by Company. Timely payment of Company’s share of royalties received by Licensor is of the essence of this Agreement.</p>
+</p>
+<p clas="l1">
+	<span>(a)</span>
+  Payments will be based on actual money received by Company. Company agrees to render accounting statements to Licensor, as to amounts due Licensor, if any, on a quarterly basis on or around the tenth (10th) day of any new quarter, which shall include amounts received by Company during the preceding quarter. This accounting period may be changed from time to time in Company’s sole discretion. No payment will be due unless the Works are actually used and payments are received by Company. In the event that the Works are used, Licensor will be paid after Company receives such payment.</p>
+</p>
+<p clas="l1">
+	<span>(b)</span>
+  In the event any royalties related to any Secured Use is sent to Licensor, then Licensor warrants and represents that it shall forward copies of all statements for the Works along with any and all payment due to Company for its share of royalties that are derived from any and all Secured Uses. Such statements and payments must be sent to Company at the address above within thirty (30) days of Licensor’s receipt of such royalties. Company shall have the right to audit all royalties and statements related to uses secured by Company. Timely payment of Company’s share of royalties received by Licensor is of the essence of this Agreement.</p>
+</p>
 
 <h2>5. Term and Termination:</h2>
 
-<p>(a) The term of this agreement shall begin as of the date first set forth above and shall continue for an initial period of twenty-four (24) months (the “Initial Term”).  At the end of the Initial Term, this agreement shall automatically renew itself for successive one (1) year periods (together with the Initial Term, the “Term”), provided that either party may give the other written notice of its desire to terminate the Term at the end of any such twenty-four (24) month or one (1) year period, by giving the non-terminating party written notice not less than forty-five (45) days before the expiration of such twenty-four (24) month or one (1) year period.</p>
-<p>(b) Any payments from licenses secured by Company during the Term will continue to be collected and paid out per the terms of this Agreement. For the avoidance of doubt, any third-party agreements will last until their expiration.</p>
+<p clas="l1">
+	<span>(a)</span>
+  The term of this agreement shall begin as of the date first set forth above and shall continue for an initial period of twenty-four (24) months (the “Initial Term”).  At the end of the Initial Term, this agreement shall automatically renew itself for successive one (1) year periods (together with the Initial Term, the “Term”), provided that either party may give the other written notice of its desire to terminate the Term at the end of any such twenty-four (24) month or one (1) year period, by giving the non-terminating party written notice not less than forty-five (45) days before the expiration of such twenty-four (24) month or one (1) year period.</p>
+</p>
+<p clas="l1">
+	<span>(b)</span>
+  Any payments from licenses secured by Company during the Term will continue to be collected and paid out per the terms of this Agreement. For the avoidance of doubt, any third-party agreements will last until their expiration.</p>
+</p>
 
 <h2>6. Territory:</h2>
 
@@ -75,12 +127,31 @@
 
 <p>Licensor warrants and represents that:</p>
 
-<p>(a) Licensor has the full right, power and authority to enter into this Agreement and to grant the rights herein and that all of Licensor’s interest in the Works are owned and controlled by Licensor throughout the Territory and are free and clear of any unauthorized samples;</p>
-<p>(b) There are no current, past or pending legal claims, lawsuits, liens, loans, judgments and/or other encumbrances against Licensor with regards to the Works or the subject matter of this Agreement;</p>
-<p>(c) The Works are original and do not infringe upon any other works or any right(s) of any third party and that Licensor has obtained all necessary permissions, clearances and consents with regards to the Works for purposes of this Agreement;</p>
-<p>(d) Any and all additional outside composers, writers, or owners of the Works shall be disclosed by Licensor at the time Works are submitted to Company, together with any necessary approvals from such parties for Company’s representation of the Works, as provided in this Agreement;</p>
-<p>(e) The Works submitted are non-union recordings and all performers on recordings, including but not limited to vocalists and musicians are all non- union. Any performers or owners of the works submitted by Licensor shall not be entitled to any benefits that may arise out of being affiliated with a union; and</p>
-<p>(f) Company is granted the full right to license the Works for any and all types of licenses, including but not limited to synch licenses, master licenses, mechanical licenses, performance licenses, print licenses, membership license deals and blanket licenses.</p>
+</p>
+<p clas="l1">
+	<span>(a)</span>
+  Licensor has the full right, power and authority to enter into this Agreement and to grant the rights herein and that all of Licensor’s interest in the Works are owned and controlled by Licensor throughout the Territory and are free and clear of any unauthorized samples;</p>
+</p>
+<p clas="l1">
+	<span>(b)</span>
+  There are no current, past or pending legal claims, lawsuits, liens, loans, judgments and/or other encumbrances against Licensor with regards to the Works or the subject matter of this Agreement;</p>
+</p>
+<p clas="l1">
+	<span>(c)</span>
+  The Works are original and do not infringe upon any other works or any right(s) of any third party and that Licensor has obtained all necessary permissions, clearances and consents with regards to the Works for purposes of this Agreement;</p>
+</p>
+<p clas="l1">
+	<span>(d)</span>
+  Any and all additional outside composers, writers, or owners of the Works shall be disclosed by Licensor at the time Works are submitted to Company, together with any necessary approvals from such parties for Company’s representation of the Works, as provided in this Agreement;</p>
+</p>
+<p clas="l1">
+	<span>(e)</span>
+  The Works submitted are non-union recordings and all performers on recordings, including but not limited to vocalists and musicians are all non- union. Any performers or owners of the works submitted by Licensor shall not be entitled to any benefits that may arise out of being affiliated with a union; and</p>
+</p>
+<p clas="l1">
+	<span>(f)</span>
+  Company is granted the full right to license the Works for any and all types of licenses, including but not limited to synch licenses, master licenses, mechanical licenses, performance licenses, print licenses, membership license deals and blanket licenses.</p>
+</p>
 
 <h2>10. Indemnity:</h2>
 
@@ -88,12 +159,25 @@
 
 <h2>11. Miscellaneous:</h2>
 
-(a) Company reserves the right to set the licensing fees for the Works and to negotiate fees wherever applicable in Company’s sole discretion. 
-(b) Company has no obligation to pitch or solicit the Works. 
-(c) Company will make best efforts to inform Licensor if and when Licensor’s music is used. Sometimes Licensor will not learn of a use until after the fact and thus Licensor may not learn about a use until payment is received, and in the case of an exclusive opportunity for the Works, Licensor will be contacted for specific approval and Licensor agrees that approval will not be unreasonably withheld. 
-(d) Any notice to be given to either party hereto shall be in writing and, except for notifications in the normal course of business (i.e., payments, statements, and general correspondence), shall be delivered to the addressee personally or mailed by certified or registered mail (return receipt requested) or by express mail.  This agreement shall be governed in accordance with the laws of the State of New York.  All disputes under this agreement shall be resolved exclusively in the courts located in the State of New York.  No waiver by either party of any default hereunder shall be deemed a waiver of any prior or subsequent default hereunder.  If any term, clause or provision of this agreement is held invalid or unenforceable by a court of competent jurisdiction, such invalidity shall not affect the validity or operation of any other term, clause or provision and such invalid term, clause or provision shall be deemed to be severed from this agreement.  Company and you are independent contractors with respect to each other and nothing contained herein shall create any association, employment, partnership or joint venture relationship between the parties.  This agreement sets forth the entire understanding between Company and you and revokes and supersedes any and all prior oral or written agreements between the parties.  No modification, amendment or waiver of this agreement shall be binding unless accompanied by a written instrument signed by both Company and you.  This Agreement may be signed electronically and in counterparts, wherein each counterpart, when executed and combined with the other executed counterparts, shall constitute a fully executed agreement.
-If you are in agreement with terms above, please sign in the space provided below.  This letter, when fully executed, shall constitute a binding agreement between the parties.
+<p clas="l1">
+	<span>(a)</span>
+  Company reserves the right to set the licensing fees for the Works and to negotiate fees wherever applicable in Company’s sole discretion. 
+</p>
+<p clas="l1">
+	<span>(b)</span>
+  Company has no obligation to pitch or solicit the Works. 
+</p>
+<p clas="l1">
+	<span>(c)</span>
+  Company will make best efforts to inform Licensor if and when Licensor’s music is used. Sometimes Licensor will not learn of a use until after the fact and thus Licensor may not learn about a use until payment is received, and in the case of an exclusive opportunity for the Works, Licensor will be contacted for specific approval and Licensor agrees that approval will not be unreasonably withheld. 
+</p>
+<p clas="l1">
+	<span>(d)</span>
+  Any notice to be given to either party hereto shall be in writing and, except for notifications in the normal course of business (i.e., payments, statements, and general correspondence), shall be delivered to the addressee personally or mailed by certified or registered mail (return receipt requested) or by express mail.  This agreement shall be governed in accordance with the laws of the State of New York.  All disputes under this agreement shall be resolved exclusively in the courts located in the State of New York.  No waiver by either party of any default hereunder shall be deemed a waiver of any prior or subsequent default hereunder.  If any term, clause or provision of this agreement is held invalid or unenforceable by a court of competent jurisdiction, such invalidity shall not affect the validity or operation of any other term, clause or provision and such invalid term, clause or provision shall be deemed to be severed from this agreement.  Company and you are independent contractors with respect to each other and nothing contained herein shall create any association, employment, partnership or joint venture relationship between the parties.  This agreement sets forth the entire understanding between Company and you and revokes and supersedes any and all prior oral or written agreements between the parties.  No modification, amendment or waiver of this agreement shall be binding unless accompanied by a written instrument signed by both Company and you.  This Agreement may be signed electronically and in counterparts, wherein each counterpart, when executed and combined with the other executed counterparts, shall constitute a fully executed agreement.
+</p>
 
+<p>If you are in agreement with terms above, please sign in the space provided below.  This letter, when fully executed, shall constitute a binding agreement between the parties.</p>
+<p></p>
 <p>Very truly yours,</p>
 <p>Acrylic, Inc.</p>
 
