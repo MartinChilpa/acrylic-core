@@ -40,6 +40,7 @@ def load_spotify_artist_data(artist_id):
             
             # save artist
             artist.save()
+    return True
 
 @app.task 
 def load_spotify_id(track_id, force=False, load_data=False):
