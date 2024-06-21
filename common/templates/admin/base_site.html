@@ -3,6 +3,11 @@
 
 {% block title %}{{ title }}{% endblock %}
 
+{% block extrahead %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static "admin/css/base.css" %}">
+{% endblock %}
+
 {% block branding %}
   <a href="{% url 'admin:index' %}"><img src="{% static 'img/logo-white.png' %}" style="height:24px;"></a>
 {% endblock %}

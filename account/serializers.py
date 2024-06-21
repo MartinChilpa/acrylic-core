@@ -4,7 +4,6 @@ from rest_registration.api.serializers import DefaultUserProfileSerializer, Defa
 from django.contrib.auth import get_user_model
 from artist.models import Artist
 from account.models import Account, Document, Invitation
-from legal.tasks import request_contract_signature_task
 
 
 User = get_user_model()
@@ -78,8 +77,6 @@ class RegisterSerializer(DefaultRegisterUserSerializer):
         if user_type == 'artist':
             # create related artist profile
             artist = Artist.objects.create(user=user, spotify_url=spotify_url)
-            # request contract signature
-            request_contract_signature_task.delay(artist.id)
         
         return user
 

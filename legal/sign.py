@@ -78,7 +78,7 @@ def splitsheet_request_signatures(split_sheet):
     # Construct the payload
     signwell = Signwell()
     isrc = split_sheet.get_isrc()
-    documents = [(f'split-sheet–{isrc}.pdf')]
+    documents = [(f'split-sheet–{isrc}.pdf', pdf_file)]
     response = signwell.request_signatures(documents=documents, emails=emails, subject=subject, message=message)
 
     if response.status_code == 201:
