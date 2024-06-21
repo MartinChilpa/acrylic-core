@@ -58,6 +58,11 @@ class SplitSheet(BaseModel):
         request_signatures_task.delay(self.id)
         return True
 
+    def get_isrc(self):
+        if self.track:
+            return self.track.irsc
+        return self.isrc
+
     def get_track_name(self):
         if self.track:
             return self.track.name

@@ -39,7 +39,8 @@ def contract_request_signature(artist):
     # Construct the payload
     emails = [(artist.user.email, artist.name)]
     signwell = Signwell()
-    response = signwell.request_signatures(documents=[pdf_file], emails=emails, subject=subject, message=message)
+    documents = [(f'artist-contract-{artist.slug}.pdf', pdf_file)]
+    response = signwell.request_signatures(documents=documents, emails=emails, subject=subject, message=message)
 
     if response.status_code == 201:
         # created
@@ -75,7 +76,9 @@ def splitsheet_request_signatures(split_sheet):
 
     # Construct the payload
     signwell = Signwell()
-    response = signwell.request_signatures(documents=[pdf_file], emails=emails, subject=subject, message=message)
+    isrc = split_sheet.get_isrc()
+    documents = [(f'split-sheet–{isrc}.pdf')]
+    response = signwell.request_signatures(documents=documents, emails=emails, subject=subject, message=message)
 
     if response.status_code == 201:
         # created

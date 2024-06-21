@@ -45,11 +45,11 @@ class Signwell():
         recipients = []
 
         files = []
-        for document in documents:
+        for name, content in documents:
             files.append({
-                'name': f'document.pdf',
+                'name': name,
                 # Convert the file to base64 encoding
-                'file_base64': base64.b64encode(document).decode('utf-8'),
+                'file_base64': base64.b64encode(content).decode('utf-8'),
             })
 
         for idx, (email, name) in enumerate(emails):
