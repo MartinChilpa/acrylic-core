@@ -20,7 +20,7 @@ def load_chartmetric_ids(track_id, force=False):
             # chartmetric 1rps
             time.sleep(1.5)
             data = cm.get_track_artist_ids_from_isrc(track.isrc)
-            if 'error' not in data and getattr(data, 'obj'):
+            if 'error' not in data and data.get('obj'):
                 if len(data['obj']['tracks']) > 0:
                     track_data = data['obj']['tracks'][0]
                     if track_data['isrc'] == track.isrc:
