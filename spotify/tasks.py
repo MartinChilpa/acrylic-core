@@ -6,6 +6,39 @@ from django.core.files.base import ContentFile
 from acrylic.celery import app
 
 
+def load_spotify_artist_data(artist_id):
+    Artist = apps.get_model('artist', 'Artist')
+    try:
+        artist = Artist.objects.get(id=artist_id)
+    except Track.DoesNotExist:
+        pass
+    else:
+        if artist.spotify_url:
+            # Extract artist ID from URI if provided
+            if 'spotify:artist:' in spotify_url:
+                artist_id = spotify_url.split('spotify:artist:')[1]
+            else:
+                # If URL is provided, extract artist ID from the URL
+                parts = spotify_url.split('/')
+                artist_id = parts[-1]
+            
+            spotify = spotify_client()
+            results = spotify.artist(artist_id)
+            artist_name = artist['name']
+            bio = artist.get('biography', artist.get('description', ''))
+            images = artist.get('images', [])
+            image_url = images[0]['url'] if images else None
+
+            artist.name = artist_name
+            artist.bio = bio
+            if image_url and not artist.image:
+                # update artist image
+                image_file = requests.get(image_url)
+                artist.image.save('profile.jpg', ContentFile(image_file.content))
+            
+            # save artist
+            artist.save()
+
 @app.task 
 def load_spotify_id(track_id, force=False, load_data=False):
     Track = apps.get_model('catalog', 'track')

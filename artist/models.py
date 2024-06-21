@@ -8,6 +8,7 @@ from taggit.managers import TaggableManager
 from common.storage import public_storage
 from common.models import BaseModel, ActiveManager
 from catalog.validators import validate_isrc
+from spotify.tasks import load_spotify_artist_data
 
 
 def get_aritst_upload_path(instance, filename):
@@ -92,6 +93,17 @@ class Artist(BaseModel):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        # load profile from spotify
+        load_profile = True if not self.id else False
+        super(Artist, self).save(*args, **kwargs)
+
+        if load_profile:
+            # async load spotify ids
+            load_spotify_artist_data.delay(self.id)
+            # async task to load charmetric ids
+            #load_chartmetric_ids.delay(self.id)
 
     def get_charmetric_url(self):
         if self.chartmetric_id:
