@@ -40,7 +40,7 @@ def contract_request_signature(artist):
     # Construct the payload
     emails = [(artist.user.email, artist.name)]
     signwell = Signwell()
-    documents = [(f'artist-contract-{artist.slug}.pdf', pdf_file)]
+    documents = [(f'artist-contract-{artist.uuid}.pdf', pdf_file)]
     response = signwell.request_signatures(documents=documents, emails=emails, subject=subject, message=message)
 
     if response.status_code == 201:
