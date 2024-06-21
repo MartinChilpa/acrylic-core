@@ -176,6 +176,9 @@ CORS_ALLOWED_ORIGINS = [
     'https://app.acrylic.la',
     'https://app.acrylic.la:4200',
     'http://app.acrylic.la:4200',
+    'https://dev.app.acrylic.la',
+    'https://dev.app.acrylic.la:4200',
+    'http://dev.app.acrylic.la:4200',
     'http://localhost:4200',
     'http://127.0.0.1:4200',
 ]
