@@ -61,7 +61,11 @@ def splitsheet_request_signatures(split_sheet):
     publishing_emails = split_sheet.publishing_splits.values_list('email', 'name')
 
     # remove master/publishing duplicates
-    emails = list(set(list(master_emails) + list(publishing_emails)))
+    emails = {}
+    for email, name in master_emails + publishing_emails:
+        if email not in emails:
+            emails[email] = name
+    emails = emails.items()
 
     # document in PDF format
     html_string = render_to_string('legal/split_sheet_pdf.html', {'split_sheet': split_sheet})
