@@ -40,6 +40,10 @@ class Chartmetric():
     def get_track_artist_ids_from_isrc(self, isrc):
         path = f'search?q={isrc}&type=tracks&limit=1'
         return self._request('get', path)
+    
+    def get_artist_id_from_spotify(self, spotify_id):
+        path = f'search?q={spotify_id}&type=artists&limit=1'
+        return self._request('get', path)
 
     #def get_track_stats(self, track_id):
     #    path = f'track/{track_id}/{type}/charts'

@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import models
 from django.db.models import Q
+from django.utils.text import slugify
 
 from django_countries.fields import CountryField
 from taggit.managers import TaggableManager
@@ -19,6 +20,7 @@ class Artist(BaseModel):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='artist', blank=True, null=True)
     name = models.CharField(max_length=250)
     slug = models.SlugField(max_length=100, blank=True) # slug for artist URL
+    isni = models.CharField('ISNI', max_length=16, blank=True) # ISNI ISO format
     bio = models.TextField(blank=True)
     hometown = models.CharField(max_length=250, blank=True)
     country = CountryField(default='ES', blank_label='(seleccionar)')
@@ -77,6 +79,7 @@ class Artist(BaseModel):
         ordering = ['-name']
         indexes = BaseModel.Meta.indexes + [
             models.Index(fields=['name']),
+            models.Index(fields=['isni']),
             models.Index(fields=['spotify_id']),
             models.Index(fields=['chartmetric_id']),
             models.Index(fields=['-spotify_followers']),
@@ -92,6 +95,16 @@ class Artist(BaseModel):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        # Generate slug if not present
+        if self.slug:
+            slug = slugify(self.name)
+            same_slug_artists = Artist.objects.filter(slug=slug).exclude(id=self.id).count()
+            if same_slug_artists > 0:
+                slug = f'{slug}{same_slug_artists+1}'
+            self.slug = slug
+        super(Artist, self).save(*args, **kwargs)
 
     def get_charmetric_url(self):
         if self.chartmetric_id:

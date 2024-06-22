@@ -4,6 +4,34 @@ from django.apps import apps
 from chartmetric.engine import Chartmetric
 from acrylic.celery import app
 
+
+@app.task
+def load_chartmetric_artist_ids(artist_id, force=False):
+    # NOT USED!
+    Artist = apps.get_model('artist', 'Artist')
+
+    try:
+        artist = Artist.objects.get(id=artist_id)
+    except Artist.DoesNotExist:
+        pass
+    else:
+        if (force == True or artist.chartmetric_id == ''):
+            # auth in chartmetric
+            cm = Chartmetric()
+            cm.authenticate()
+            # chartmetric 1rps
+            time.sleep(1.5)
+            data = cm.get_artist_id_from_spotify(artist.name)
+            if 'error' not in data and data.get('obj'):
+                if len(data['obj']['artists']) > 0:
+                    artist_data = data['obj']['artists'][0]
+                    # store chartmetric id
+                    artist.chartmetric_id = artist_data['id']
+                    print(f'Artist: {artist.chartmetric_id}')
+                    track.save()
+    return True
+
+
 @app.task
 def load_chartmetric_ids(track_id, force=False):
     Track = apps.get_model('catalog', 'track')
