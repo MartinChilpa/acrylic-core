@@ -39,10 +39,10 @@ def signwell_webhook(request):
                     # no document with given ID: try to update split sheet with given ID
                     SplitSheet.objects.filter(signature_request_id=signature_request_id).update(signed=datetime.datetime.now(), status=SplitSheet.Status.SIGNED)
                 
-                else:                    
+                else:
                     # get signed document PDF
-                    signed_pdf_content = sign_backend.get_signed_document(document.signature_request_id)
-                    document.document.save(f'{document.uuid}.pdf', ContentFile(signed_pdf_content), save=False)
+                    # signed_pdf_content = sign_backend.get_signed_document(document.signature_request_id)
+                    # document.signed_document.save(f'{document.uuid}.pdf', ContentFile(signed_pdf_content), save=False)
                     document.save()
 
             return JsonResponse({'status': 'success'})

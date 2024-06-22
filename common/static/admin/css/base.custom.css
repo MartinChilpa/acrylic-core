@@ -20,15 +20,15 @@
 td .status {
     display:block;
 }
-.status.incomplete, .status.pending {
+.status.CREATED, .status.PENDING {
     background:#EB8A6C;
 }
-.status.paused, .status.pause {
+.status.paused, .status.EXPIRED {
     background:#07D7D3;
 }
-.status.canceled, .status.error {
+.status.CANCELED, .status {
     background:#C24343;
 }
-.status.active, .status.paid, .status.sent {
+.status.SIGNED, .status.ACTIVE, .status.SENT {
     background:#20E19D;
 }

@@ -41,6 +41,7 @@ class ArtistAdmin(ImportExportModelAdmin):
         )
         return render(request, 'admin/artist/artist_detail.html', context)
 
+    @admin.display(description='UUID')
     def view_object_link(self, obj):
         url = reverse('admin:artist_view_object', args=[obj.id])
         return format_html(f'<a href="{url}">{obj.uuid}</a>')

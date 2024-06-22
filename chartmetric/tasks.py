@@ -65,7 +65,7 @@ def load_chartmetric_ids(track_id, force=False):
 
 
 @app.task
-def load_chartmetric_stats(artist_id): 
+def load_chartmetric_stats(track_id): 
     Track = apps.get_model('catalog', 'track')
 
     # auth in chartmetric

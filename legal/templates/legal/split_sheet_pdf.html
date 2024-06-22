@@ -1,44 +1,52 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Split sheet</title>
+  <img src="{% static "img/acrylic-logo-pdf.jpg" %}" style="width:2.5cm;">
+  <br><br>
+  <title>Split sheet</title>
 </head>
 <body>
-    <h1>SOUND RECORDING + MUSICAL COMPOSITION RIGHTSHOLDER SPLIT CONFIRMATION</h1>
+  <h1>SOUND RECORDING + MUSICAL COMPOSITION RIGHTSHOLDER SPLIT CONFIRMATION</h1>
 
-    <ul>
-        <li>Track name: {{ split_sheet.get_track_name }}</li>
-        <li>ISRC: {{ split_sheet.isrc }}</li>
-        <li>Artist: {{ split_sheet.artist.name }}</li>
-    </ul>
-    <p>
-        This is to confirm that we, the undersigned are the sole owners (each an “Owner,” collectively, the “Owners”) of the sound recording (the “Sound Recording”) and the composition the “Composition”) listed below, and the Owners hereby agree to the ownership percentages set forth below. The Owners hereby acknowledge that each Owner (or their respective publishers, designees, assignees, successors in interest, as applicable) shall jointly own and control in perpetuity, in the worldwide right, title and interest, of every nature, kind and description in the percentages indicated below in and to the Composition and the Sound Recording including but not limited to, the worldwide copyright therein and any and all extensions, renewals and revised terms of such copyright, subject to any third party interests or claims which may arise in connection therewith.  
-    </p>
-    
-    <h2>Sound recording "{{ split_sheet.get_track_name }}"</h2>
-    <ul>
-        {% for split in split_sheet.master_splits.all %}
-            <li>{{ split.name }} ({{ split.email }}) owns {{ split.percent }}%</li>
-        {% endfor %}
-    </ul>
+  <ul>
+      <li>Track name: {{ split_sheet.get_track_name }}</li>
+      <li>ISRC: <strong>{{ split_sheet.isrc }}</strong></li>
+      <li>Artist: {{ split_sheet.artist.name }}</li>
+  </ul>
+  <p>
+      This is to confirm that we, the undersigned are the sole owners (each an “Owner”, collectively, the “Owners”) of the sound recording (the “Sound Recording”) and the composition the “Composition”) listed below, and the Owners hereby agree to the ownership percentages set forth below. The Owners hereby acknowledge that each Owner (or their respective publishers, designees, assignees, successors in interest, as applicable) shall jointly own and control in perpetuity, in the worldwide right, title and interest, of every nature, kind and description in the percentages indicated below in and to the Composition and the Sound Recording including but not limited to, the worldwide copyright therein and any and all extensions, renewals and revised terms of such copyright, subject to any third party interests or claims which may arise in connection therewith.  
+  </p>
+  
+  <h2>Sound recording "{{ split_sheet.get_track_name }}"</h2>
+  <ul>
+      {% for split in split_sheet.master_splits.all %}
+          <li>{{ split.name }} ({{ split.email }}) owns {{ split.percent }}%</li>
+      {% endfor %}
+  </ul>
 
-    <h2>Composition "{{ split_sheet.get_track_name }}"</h2>
-    <ul>
-        {% for split in split_sheet.publishing_splits.all %}
-            <li>{{ split.name }} ({{ split.email }}) owns {{ split.percent }}%</li>
-        {% endfor %}
-    </ul>
-    <p>
-        The Owners warrant, represent, covenant and agree that: (i) all musical and other materials (including, without limitation, so-called “samples”) and all compositions, recordings, ideas, designs and other intellectual properties furnished by Owners in connection with the Composition and the Sound Recording are or will be new and original with Owners or in the public domain throughout the world or used with the consent of the original owner and/or the present owner thereof, and shall not infringe upon or violate any copyright or right of privacy or any other right of any person or entity throughout the world, and shall not be the subject of any actual or threatened litigation or claim; and (ii) Owners are free and clear to grant all of the rights granted herein and to make all of the agreements made by Owners herein.  
-    </p>
-    <p>
-        Owners hereby indemnify, save and hold Acrylic Songs, LLC and its affiliated entities and persons, and their respective assigns and  licensees harmless from any and all liability, loss, damage, cost and expense (including actual legal expenses and reasonable, outside attorney fees) arising out of or connected with any breach of this agreement or any third party claim that is inconsistent with any of the warranties or representations made by Owners in this agreement.  In all events, Owners may participate in their  own defense at their  sole expense, through counsel of their own choice.
-    </p>
-    <p>
-        This Agreement constitutes the entire agreement among the Owners with respect to the subject matter hereof and supersedes all prior negotiations and agreements in connection therewith, whether written or oral and may not be altered or amended except by instrument in writing, executed by an authorized representative of the party to be charged.  
-    </p>
-    <p>
-        This Agreement may be executed and delivered in counterparts, by original, facsimile, or PDF, each of which when executed and delivered is an original but all of which when taken together constitute one and the same original instrument.
-    </p>
+  <h2>Composition "{{ split_sheet.get_track_name }}"</h2>
+  <ul>
+      {% for split in split_sheet.publishing_splits.all %}
+          <li>{{ split.name }} ({{ split.email }}) owns {{ split.percent }}%</li>
+      {% endfor %}
+  </ul>
+  <p>The Owners warrant, represent, covenant and agree that:</p>
+  <p class="l1">
+    <span>(i)</span>
+    all musical and other materials (including, without limitation, so-called “samples”) and all compositions, recordings, ideas, designs and other intellectual properties furnished by Owners in connection with the Composition and the Sound Recording are or will be new and original with Owners or in the public domain throughout the world or used with the consent of the original owner and/or the present owner thereof, and shall not infringe upon or violate any copyright or right of privacy or any other right of any person or entity throughout the world, and shall not be the subject of any actual or threatened litigation or claim; and
+  </p>
+  <p class="l1">
+      <span>(ii)</span>
+      Owners are free and clear to grant all of the rights granted herein and to make all of the agreements made by Owners herein.  
+  </p>
+  <p>
+      Owners hereby indemnify, save and hold Acrylic Songs, LLC and its affiliated entities and persons, and their respective assigns and  licensees harmless from any and all liability, loss, damage, cost and expense (including actual legal expenses and reasonable, outside attorney fees) arising out of or connected with any breach of this agreement or any third party claim that is inconsistent with any of the warranties or representations made by Owners in this agreement.  In all events, Owners may participate in their  own defense at their  sole expense, through counsel of their own choice.
+  </p>
+  <p>
+      This Agreement constitutes the entire agreement among the Owners with respect to the subject matter hereof and supersedes all prior negotiations and agreements in connection therewith, whether written or oral and may not be altered or amended except by instrument in writing, executed by an authorized representative of the party to be charged.  
+  </p>
+  <p>
+      This Agreement may be executed and delivered in counterparts, by original, facsimile, or PDF, each of which when executed and delivered is an original but all of which when taken together constitute one and the same original instrument.
+  </p>
 </body>
 </html>

@@ -38,6 +38,8 @@ class Account(BaseModel):
     phone = models.PositiveIntegerField(null=True, blank=True)
     tax_id = models.CharField(max_length=20, blank=True)
     failed_payment_notifications = models.BooleanField(default=True)
+    # contract signature
+    contract_signed = models.DateTimeField(blank=True, null=True)
 
     def __str__(self):
         return self.user.email
@@ -57,6 +59,7 @@ class Document(BaseModel):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='documents', on_delete=models.PROTECT)
     name = models.CharField(max_length=200)
     document = models.FileField(upload_to=get_upload_path)
+    signed_document = models.FileField(upload_to=get_upload_path, blank=True)
     type = models.CharField(max_length=20, choices=Type.choices, default=Type.OTHER)
 
     # digital signature provider
