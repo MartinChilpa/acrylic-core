@@ -31,4 +31,4 @@ django-import-export==4.0.1
 sorl-thumbnail==12.10.0
 hubspot-api-client==9.0.0
 tablib[xlsx]==3.5.0
-django_celery_monitor-1.1.2
+django_celery_monitor==1.1.2
