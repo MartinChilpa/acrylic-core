@@ -24,8 +24,8 @@ class AccountAdmin(admin.ModelAdmin):
 
 @admin.register(Document)
 class DocumentAdmin(admin.ModelAdmin):
-    list_display = ['uuid', 'name', 'user', 'document', 'type', 'created', 'updated']
-    list_filter = ['type']
+    list_display = ['uuid', 'name', 'user', 'document', 'type', 'signed', 'created', 'updated']
+    list_filter = ['type', 'signed', 'created', 'updated']
     search_fields = ['uuid', 'name']
     raw_id_fields = ['user']
 

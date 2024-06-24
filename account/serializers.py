@@ -58,7 +58,7 @@ class RegisterSerializer(DefaultRegisterUserSerializer):
             spotify_url = data.pop('spotify_url')
         
         # set email as username
-        data['username'] = data['email']
+        data['username'] = base64.b64encode(data['email'].encode('utf-8')).decode('utf-8')
         if self.has_password_confirm_field():
             del data['password_confirm']
         
