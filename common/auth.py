@@ -8,7 +8,9 @@ class EmailAuthBackend:
         try:
             user = User.objects.get(email=username)
             if user.check_password(password):
-                return user
+                if user.account.contract_signed:
+                    # contract with the platform was signed
+                    return user
             return None
         except (User.DoesNotExist, User.MultipleObjectsReturned):
             return None

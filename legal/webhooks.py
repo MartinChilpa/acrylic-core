@@ -46,6 +46,10 @@ def signwell_webhook(request):
                     # document.signed_document.save(f'{document.uuid}.pdf', ContentFile(signed_pdf_content), save=False)
                     document.signed = timezone.now()
                     document.save()
+                    # save when contract was signed in account
+                    account = document.user.account
+                    account.contract_signed = document.signed
+                    account.save()
 
             return JsonResponse({'status': 'success'})
         return JsonResponse({'status': 'bad request'}, status=400)
