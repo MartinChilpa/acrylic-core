@@ -38,7 +38,7 @@ def contract_request_signature(artist):
     """
 
     # Construct the payload
-    emails = [(artist.user.email, artist.name)]
+    emails = [(artist.user.email, artist.user.get_full_name())]
     signwell = Signwell()
     documents = [(f'artist-contract-{artist.uuid}.pdf', pdf_file)]
     response = signwell.request_signatures(documents=documents, emails=emails, subject=subject, message=message)
