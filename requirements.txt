@@ -32,3 +32,4 @@ sorl-thumbnail==12.10.0
 hubspot-api-client==9.0.0
 tablib[xlsx]==3.5.0
 flower==2.0.1
+pydyf==0.8.0
