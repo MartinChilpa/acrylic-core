@@ -45,6 +45,7 @@ class RegisterSerializer(DefaultRegisterUserSerializer):
         fields = super().get_fields()
         fields['type'] = serializers.ChoiceField(choices=['artist', 'artist'])
         fields['spotify_url'] = serializers.URLField(required=False)
+        print('FIELDS',fields)
         return fields
 
     def create(self, validated_data):
@@ -53,6 +54,11 @@ class RegisterSerializer(DefaultRegisterUserSerializer):
         user_type = data.pop('type')
         
         spotify_url = ''
+
+        if 'club' == data['type']:
+            print("VALIDATE_DATA",validated_data)
+            return None
+
         if user_type == 'artist':
             # additional artist data
             spotify_url = data.pop('spotify_url')

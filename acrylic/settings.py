@@ -213,8 +213,8 @@ EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 EMAIL_USE_TLS = True
 EMAIL_FROM = os.environ.get('EMAIL_FROM', 'noreply@acrylic.la')
 DEFAULT_FROM_EMAIL = EMAIL_FROM
-AWS_SES_REGION_NAME = os.environ.get('AWS_SES_REGION_NAME', '')
-AWS_SES_REGION_ENDPOINT = os.environ.get('AWS_SES_REGION_ENDPOINT', '')
+AWS_SES_REGION_NAME = config('AWS_SES_REGION_NAME', '')
+AWS_SES_REGION_ENDPOINT = config('AWS_SES_REGION_ENDPOINT', '')
 # server mail for errors
 SERVER_EMAIL = os.environ.get('SERVER_EMAIL', '')
 
@@ -228,11 +228,11 @@ STORAGES = {
     },
 }
 
-AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', default='')
-AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
-AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME', '')
+AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID', default='')
+AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY', '')
+AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME', '')
 
-PUBLIC_S3_BUCKET = os.environ.get('PUBLIC_S3_BUCKET', '')
+PUBLIC_S3_BUCKET = config('PUBLIC_S3_BUCKET', '')
 
 # AWS_DEFAULT_ACL = 'private'
 AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', '')
@@ -296,7 +296,7 @@ SPECTACULAR_SETTINGS = {
 WHITENOISE_MANIFEST_STRICT = False
 
 BASE_URL = os.environ.get('BASE_URL', 'https://platform.acrylic.la/')
-FRONTEND_BASE_URL = os.environ.get('FRONTEND_BASE_URL', 'https://app.acrylic.la/')
+FRONTEND_BASE_URL = config('FRONTEND_BASE_URL', 'https://app.acrylic.la/')
 
 REST_REGISTRATION = {
     # user profile
