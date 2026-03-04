@@ -3,6 +3,7 @@ from rest_framework import serializers, fields
 from rest_registration.api.serializers import DefaultUserProfileSerializer, DefaultRegisterUserSerializer
 from django.contrib.auth import get_user_model
 from artist.models import Artist
+from club.models import Club
 from account.models import Account, Document, Invitation
 
 
@@ -32,36 +33,52 @@ class RegisterSerializer(DefaultRegisterUserSerializer):
     class Meta:
         model = User
     
-    def validate_email(self, value):
-        # invite
-        if not Invitation.objects.filter(email=value).exists():
-            raise serializers.ValidationError('User with this email has not been invited')
+    # def validate_email(self, value):
+    #     # invite
+        
+    #     if not Invitation.objects.filter(email=value).exists():
+    #         raise serializers.ValidationError('User with this email has not been invited')
 
-        if User.objects.filter(email=value).exists():
-            raise serializers.ValidationError('User with this email already exists')
-        return value
+    #     if User.objects.filter(email=value).exists():
+    #         print("Existe?")
+    #         raise serializers.ValidationError('User with this email already exists')
+    #     return value
+
+    def validate(self, attrs):
+        """
+        Validación integral: aquí tenemos acceso a 'email' y a 'type'.
+        """
+        email = attrs.get('email')
+        user_type = attrs.get('type')
+
+        # 1. Validar si el usuario ya existe (aplica para todos)
+        if User.objects.filter(email=email).exists():
+            raise serializers.ValidationError({'email': 'User with this email already exists'})
+
+        # 2. VALIDACIÓN CONDICIONAL: 
+        # Solo pedimos invitación si el tipo es 'artist'. 
+        # Los 'club' pasan directo sin invitación.
+        if user_type == 'artist':
+            if not Invitation.objects.filter(email=email).exists():
+                raise serializers.ValidationError({
+                    'email': 'Artists must have an invitation to register.'
+                })
+        return attrs
+
     
     def get_fields(self):
         fields = super().get_fields()
-        fields['type'] = serializers.ChoiceField(choices=['artist', 'artist'])
+        fields['type'] = serializers.ChoiceField(choices=['artist', 'club'])
         fields['spotify_url'] = serializers.URLField(required=False)
-        print('FIELDS',fields)
+        print("CAMPOS ACTIVOS:", list(fields.keys()))
         return fields
 
     def create(self, validated_data):
         data = validated_data.copy()
         
         user_type = data.pop('type')
-        
-        spotify_url = ''
-
-        if 'club' == data['type']:
-            print("VALIDATE_DATA",validated_data)
-            return None
-
-        if user_type == 'artist':
-            # additional artist data
-            spotify_url = data.pop('spotify_url')
+        spotify_url = data.pop('spotify_url',' ')
+                    
         
         # set email as username
         data['username'] = base64.b64encode(data['email'].encode('utf-8')).decode('utf-8')
@@ -70,8 +87,17 @@ class RegisterSerializer(DefaultRegisterUserSerializer):
         
         # create user
         user = self.Meta.model.objects.create_user(**data)
+
+        if user_type=='artist':
+            db_user_type = Account.UserType.ARTIST
+        elif user_type=='club':
+            db_user_type = Account.UserType.CLUB
+        else:
+            db_user_type = Account.UserType.UND
+
+
         # create related account
-        Account.objects.create(user=user)
+        Account.objects.create(user=user,user_type=db_user_type)
 
         # mark invitation as joined
         invitations = Invitation.objects.filter(email=user.email)
@@ -80,9 +106,16 @@ class RegisterSerializer(DefaultRegisterUserSerializer):
             invitation.joined = True
             invitation.save()
 
+
+        if 'club' == user_type:
+            club = Club.objects.create(user=user,club_name=user.first_name)
+            print("REGISTRO DE CLUB DETECTADO:")
+            
+
         if user_type == 'artist':
             # create related artist profile
             artist = Artist.objects.create(user=user, spotify_url=spotify_url)
+
         
         return user
 

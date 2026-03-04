@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     'chartmetric',
     'spotify',
     'buyer',
+    'club',
 ]
 
 MIDDLEWARE = [
@@ -235,7 +236,7 @@ AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME', '')
 PUBLIC_S3_BUCKET = config('PUBLIC_S3_BUCKET', '')
 
 # AWS_DEFAULT_ACL = 'private'
-AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', '')
+AWS_S3_REGION_NAME = config('AWS_S3_REGION_NAME', '')
 AWS_IS_GZIPPED = True
 AWS_S3_ENDPOINT_URL = f'https://s3.{AWS_S3_REGION_NAME}.amazonaws.com'
 AWS_S3_FILE_OVERWRITE = False
@@ -244,13 +245,13 @@ AWS_QUERYSTRING_EXPIRE = 3600 * 24 # 1 day
 
 # django-tagging
 FORCE_LOWERCASE_TAGS = True
-"""
+
 SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
 
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': os.environ.get('REDISCLOUD_URL', ''),
+        'LOCATION': config('REDISCLOUD_URL', ''),
         'TIMEOUT': 600, # 10 min
         'KEY_PREFIX': 'cache',
         'OPTIONS': {
@@ -258,7 +259,7 @@ CACHES = {
         }
     }
 }
-"""
+
 
 REST_FRAMEWORK = {
     # YOUR SETTINGS
