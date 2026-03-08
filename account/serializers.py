@@ -70,7 +70,6 @@ class RegisterSerializer(DefaultRegisterUserSerializer):
         fields = super().get_fields()
         fields['type'] = serializers.ChoiceField(choices=['artist', 'club'])
         fields['spotify_url'] = serializers.URLField(required=False)
-        print("CAMPOS ACTIVOS:", list(fields.keys()))
         return fields
 
     def create(self, validated_data):
