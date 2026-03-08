@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User
+from rest_framework import serializers
 
 class EmailAuthBackend:
     """
@@ -11,6 +12,11 @@ class EmailAuthBackend:
                 if user.account.contract_signed:
                     # contract with the platform was signed
                     return user
+                else:
+                    raise serializers.ValidationError(
+                {"detail": "The contract has not been signed."}
+            )
+
             return None
         except (User.DoesNotExist, User.MultipleObjectsReturned):
             return None

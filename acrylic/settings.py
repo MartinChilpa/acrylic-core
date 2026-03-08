@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     'chartmetric',
     'spotify',
     'buyer',
+    'club',
 ]
 
 MIDDLEWARE = [
@@ -213,8 +214,8 @@ EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 EMAIL_USE_TLS = True
 EMAIL_FROM = os.environ.get('EMAIL_FROM', 'noreply@acrylic.la')
 DEFAULT_FROM_EMAIL = EMAIL_FROM
-AWS_SES_REGION_NAME = os.environ.get('AWS_SES_REGION_NAME', '')
-AWS_SES_REGION_ENDPOINT = os.environ.get('AWS_SES_REGION_ENDPOINT', '')
+AWS_SES_REGION_NAME = config('AWS_SES_REGION_NAME', '')
+AWS_SES_REGION_ENDPOINT = config('AWS_SES_REGION_ENDPOINT', '')
 # server mail for errors
 SERVER_EMAIL = os.environ.get('SERVER_EMAIL', '')
 
@@ -228,14 +229,14 @@ STORAGES = {
     },
 }
 
-AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', default='')
-AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
-AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME', '')
+AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID', default='')
+AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY', '')
+AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME', '')
 
-PUBLIC_S3_BUCKET = os.environ.get('PUBLIC_S3_BUCKET', '')
+PUBLIC_S3_BUCKET = config('PUBLIC_S3_BUCKET', '')
 
 # AWS_DEFAULT_ACL = 'private'
-AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', '')
+AWS_S3_REGION_NAME = config('AWS_S3_REGION_NAME', '')
 AWS_IS_GZIPPED = True
 AWS_S3_ENDPOINT_URL = f'https://s3.{AWS_S3_REGION_NAME}.amazonaws.com'
 AWS_S3_FILE_OVERWRITE = False
@@ -244,13 +245,13 @@ AWS_QUERYSTRING_EXPIRE = 3600 * 24 # 1 day
 
 # django-tagging
 FORCE_LOWERCASE_TAGS = True
-"""
+
 SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
 
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': os.environ.get('REDISCLOUD_URL', ''),
+        'LOCATION': config('REDISCLOUD_URL', ''),
         'TIMEOUT': 600, # 10 min
         'KEY_PREFIX': 'cache',
         'OPTIONS': {
@@ -258,7 +259,7 @@ CACHES = {
         }
     }
 }
-"""
+
 
 REST_FRAMEWORK = {
     # YOUR SETTINGS
@@ -296,7 +297,7 @@ SPECTACULAR_SETTINGS = {
 WHITENOISE_MANIFEST_STRICT = False
 
 BASE_URL = os.environ.get('BASE_URL', 'https://platform.acrylic.la/')
-FRONTEND_BASE_URL = os.environ.get('FRONTEND_BASE_URL', 'https://app.acrylic.la/')
+FRONTEND_BASE_URL = config('FRONTEND_BASE_URL', 'https://app.acrylic.la/')
 
 REST_REGISTRATION = {
     # user profile

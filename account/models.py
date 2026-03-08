@@ -31,7 +31,12 @@ User.add_to_class('profile', get_profile)
 """
 
 class Account(BaseModel):
+    class UserType(models.TextChoices):
+        ARTIST = 'ARTIST', 'artist'
+        CLUB = 'CLUB', 'club'
+        UND = 'UND', 'und'
     user = models.OneToOneField(settings.AUTH_USER_MODEL, related_name='account', on_delete=models.PROTECT)
+    user_type = models.CharField(max_length=20,choices=UserType.choices,default=UserType.ARTIST)
     billing_email = models.EmailField(blank=True)
     billing_details = models.TextField(blank=True)
     country_code = models.CharField(max_length=2, blank=True)
@@ -40,6 +45,7 @@ class Account(BaseModel):
     failed_payment_notifications = models.BooleanField(default=True)
     # contract signature
     contract_signed = models.DateTimeField(blank=True, null=True)
+
 
     def __str__(self):
         return self.user.email
@@ -56,7 +62,9 @@ class Document(BaseModel):
         TOS = 'TOS', 'Terms of Service'
         TAX = 'TAX', 'Tax'
         OTHER = 'OTHER', 'Other'
+
     user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='documents', on_delete=models.PROTECT)
+    
     name = models.CharField(max_length=200)
     document = models.FileField(upload_to=get_upload_path)
     signed_document = models.FileField(upload_to=get_upload_path, blank=True)
@@ -66,7 +74,7 @@ class Document(BaseModel):
     signature_request_id = models.CharField(max_length=50, blank=True)
     signed = models.DateTimeField(blank=True, null=True, default=None)
 
-    class Meta:
+    class Meta: # type: ignore
         indexes = BaseModel.Meta.indexes + [
             models.Index(fields=['signature_request_id']),
         ]

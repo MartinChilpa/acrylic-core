@@ -12,6 +12,7 @@ app = Celery('acrylic')
 app.conf.update(
     broker_url=config('REDISCLOUD_URL', ''),
     result_backend=config('REDISCLOUD_URL', ''),
+    task_default_queue='marti_local',
     #CELERY_ALWAYS_EAGER=True,
     broker_transport_options={
         'max_retries': 5,
