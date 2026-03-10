@@ -16,7 +16,7 @@ class EmailAuthBackend:
         
         account = user.account
 
-        if account.user_type == "artist" and not account.contract_signed:
+        if account.user_type == "ARTIST" and not account.contract_signed:
             raise serializers.ValidationError(
                 {"detail": "The contract has not been signed."}
             )
