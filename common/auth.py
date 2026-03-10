@@ -8,19 +8,20 @@ class EmailAuthBackend:
     def authenticate(self, request, username=None, password=None):
         try:
             user = User.objects.get(email=username)
-            if user.check_password(password):
-                if user.account.contract_signed:
-                    # contract with the platform was signed
-                    return user
-                else:
-                    raise serializers.ValidationError(
-                {"detail": "The contract has not been signed."}
-            )
-
-            return None
         except (User.DoesNotExist, User.MultipleObjectsReturned):
             return None
+            
+        if not user.check_password(password):
+                return None
+        
+        account = user.account
 
+        if account.user_type == "artist" and not account.contract_signed:
+            raise serializers.ValidationError(
+                {"detail": "The contract has not been signed."}
+            )
+        return user
+        
     def get_user(self, user_id):
         try:
             return User.objects.get(pk=user_id)
