@@ -61,8 +61,16 @@ class Artist(BaseModel):
 
     instagram_followers = models.PositiveIntegerField(default=0, editable=False)
 
+    # Chartmetric: Instagram audience snapshots (shape can change, store raw-ish JSON).
+    chartmetric_instagram_top_countries = models.JSONField(null=True, blank=True)
+    chartmetric_instagram_top_cities = models.JSONField(null=True, blank=True)
+    chartmetric_instagram_demographics = models.JSONField(null=True, blank=True)
+    chartmetric_instagram_audience_updated_at = models.DateTimeField(null=True, blank=True, editable=False)
+
     tiktok_followers = models.PositiveIntegerField(default=0, editable=False)
     tiktok_likes = models.PositiveIntegerField(default=0, editable=False)
+
+    youtube_followers = models.PositiveIntegerField(default=0, editable=False)
     
     # youtube_subscribers = models.PositiveIntegerField(default=0) 
     # soundcloud_followers = models.PositiveIntegerField(default=0) 

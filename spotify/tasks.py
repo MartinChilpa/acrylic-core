@@ -11,35 +11,36 @@ def load_spotify_artist_data(artist_id):
     Artist = apps.get_model('artist', 'Artist')
     try:
         artist = Artist.objects.get(id=artist_id)
-    except Track.DoesNotExist:
-        pass
-    else:
-        if artist.spotify_url:
-            # Extract artist ID from URI if provided
-            if 'spotify:artist:' in artist.spotify_url:
-                artist_id = artist.spotify_url.split('spotify:artist:')[1]
-            else:
-                # If URL is provided, extract artist ID from the URL
-                artist_id = artist.spotify_url.split('?')[0].split('/')[-1]
-            
-            spotify = spotify_client()
-            artist_data = spotify.artist(artist_id)
-            spotify_id = artist_data['id']
-            artist_name = artist_data['name']
-            #bio = artist_data.get('biography', artist_data.get('description', ''))
-            images = artist_data.get('images', [])
-            image_url = images[0]['url'] if images else None
+    except Artist.DoesNotExist:
+        return False
 
-            artist.spotify_id = spotify_id
-            artist.name = artist_name
-            #artist.bio = bio
-            if image_url and not artist.image:
-                # update artist image
-                image_file = requests.get(image_url)
-                artist.image.save('profile.jpg', ContentFile(image_file.content))
-            
-            # save artist
-            artist.save()
+    if artist.spotify_url:
+        # Extract artist ID from URI if provided
+        if 'spotify:artist:' in artist.spotify_url:
+            artist_id = artist.spotify_url.split('spotify:artist:')[1]
+        else:
+            # If URL is provided, extract artist ID from the URL
+            artist_id = artist.spotify_url.split('?')[0].split('/')[-1]
+
+        spotify = spotify_client()
+        artist_data = spotify.artist(artist_id)
+        spotify_id = artist_data['id']
+        artist_name = artist_data['name']
+        #bio = artist_data.get('biography', artist_data.get('description', ''))
+        images = artist_data.get('images', [])
+        image_url = images[0]['url'] if images else None
+
+        artist.spotify_id = spotify_id
+        artist.name = artist_name
+        #artist.bio = bio
+        if image_url and not artist.image:
+            # update artist image
+            image_file = requests.get(image_url)
+            artist.image.save('profile.jpg', ContentFile(image_file.content))
+
+        # save artist
+        artist.save()
+
     return True
 
 @app.task 
@@ -57,6 +58,8 @@ def load_spotify_id(track_id, force=False, load_data=False):
             if len(tracks) > 0:
                 # first track where ISRC matches
                 track.spotify_id = tracks[0]['id']
+                
+                
                 print(f'Track Spotify ID: {track.spotify_id}')
                 if not track.artist.spotify_id:
                     artist = track.artist        

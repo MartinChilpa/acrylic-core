@@ -21,11 +21,17 @@ ADMINS = [
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-i7!0w_w7d=x+h*v@n)_lr)_onr!5(la3-1wzca=6mz^_jl0^em'
-
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config('DJANGO_DEBUG', default=True, cast=bool)
+
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = config('DJANGO_SECRET_KEY', default='')
+if not SECRET_KEY:
+    if DEBUG:
+        # Dev-only fallback. Set DJANGO_SECRET_KEY in .env for anything shared.
+        SECRET_KEY = 'django-insecure-dev-only'
+    else:
+        raise RuntimeError('DJANGO_SECRET_KEY is required when DJANGO_DEBUG is false')
 
 ALLOWED_HOSTS = ['dev.platform.acrylic.la', 'platform.acrylic.la']
 
@@ -352,8 +358,11 @@ HUBSPOT_PORTAL_ID = config('HUBSPOT_PORTAL_ID', default='')
 HUBSPOT_ACCESS_TOKEN = config('HUBSPOT_ACCESS_TOKEN', default='')
 
 # Chartmetric API
-CHARTMETRIC_REFRESH_TOKEN = config('CHARTMETRIC_REFRESH_TOKEN', default='sZBgq3RceskBkFnjc8YNDm0LUJ7swpuqk6NL4CyEYnlkL5NVpFx2WU8cGwAD7XlZ')
-# jeremy: O7gYTjDXBHdLeHEcHH5WVBTFFDrJpPeev6HCjk5LHZ8sBCJFhYfIWmCDGxIU64OS
+CHARTMETRIC_REFRESH_TOKEN = config('CHARTMETRIC_REFRESH_TOKEN', default='')
+
+# AIMS API
+AIMS_API_SECRET = config('AIMS_API_SECRET', default='')
+AIMS_CLIENT_ID = config('AIMS_CLIENT_ID', default='')
 
 # Spotify API
 

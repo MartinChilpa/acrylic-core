@@ -83,6 +83,15 @@ class MyTrackViewSet(viewsets.ModelViewSet):
         when creating a new track.
         """
         serializer.save(artist=self.request.user.artist)
+        
+    def finalize_response(self, request, response, *args, **kwargs):
+        # Solo imprimimos si la respuesta fue exitosa (200 OK, 201 Created, etc.)
+        if 200 <= response.status_code < 300:
+            print("--- JSON DE SALIDA ---")
+            print(response.data) 
+            print("-----------------------")
+        
+        return super().finalize_response(request, response, *args, **kwargs)
 
 
 @extend_schema(

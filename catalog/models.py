@@ -11,6 +11,9 @@ from common.storage import public_storage
 from spotify.tasks import load_spotify_id
 from chartmetric.tasks import load_chartmetric_ids
 from catalog.validators import validate_isrc
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class Distributor(BaseModel):
@@ -51,6 +54,10 @@ class Genre(BaseModel):
 
 def get_upload_path(instance, filename):
     return f'tracks/{instance.uuid}/{filename}'
+
+def get_waveform_upload_path(instance, filename):
+    # Keep waveform metadata next to the track's audio under the same S3 prefix.
+    return f'tracks/{instance.uuid}/waveform.json'
 
 
 class Price(BaseModel):
@@ -100,6 +107,11 @@ class TierPrice(BaseModel):
 
 class Track(BaseModel):
 
+    class AimsStatus(models.TextChoices):
+        PENDING = 'pending', 'pending'
+        PROCESSING = 'processing', 'processing'
+        SUCCESS = 'success', 'success'
+
     class RecordType(models.TextChoices):
         STUDIO = 'STUDIO', 'Studio'
 
@@ -137,6 +149,7 @@ class Track(BaseModel):
     snippet  = models.FileField(upload_to=get_upload_path, blank=True)
     file_wav = models.FileField(upload_to=get_upload_path, blank=True)
     file_mp3 = models.FileField(upload_to=get_upload_path, blank=True)
+    waveform = models.FileField(upload_to=get_waveform_upload_path, blank=True)
 
     genres = models.ManyToManyField('catalog.Genre', related_name='tracks', blank=True)
     additional_main_artists = models.ManyToManyField('artist.Artist', blank=True, related_name='other_tracks_main')
@@ -153,6 +166,14 @@ class Track(BaseModel):
     #styles
     #season
     #similar_artists
+    aims_id = models.PositiveBigIntegerField(blank=True, null=True, db_index=True)
+    aims_status = models.CharField(
+        max_length=20,
+        choices=AimsStatus.choices,
+        default=AimsStatus.PENDING,
+        db_index=True,
+    )
+
 
     # external ids
     spotify_id = models.CharField(max_length=30, blank=True)
@@ -178,10 +199,24 @@ class Track(BaseModel):
         super(Track, self).save(*args, **kwargs)
 
         if load_ids:
-            # async load spotify ids
-            load_spotify_id.delay(self.id, load_data=True)
-            # async task to load charmetric ids
-            load_chartmetric_ids.delay(self.id)
+            try:
+                # async load spotify ids
+                load_spotify_id.delay(self.id, load_data=True)
+                # async task to load chartmetric ids
+                load_chartmetric_ids.delay(self.id)
+            except Exception:
+                # Don't break the save flow if Celery/Redis isn't available.
+                logger.exception("Failed to enqueue external-id tasks for track_id=%s", self.id)
+
+        # Generate waveform JSON when a WAV is present and waveform is missing.
+        # Done async because it can be slow and may involve external storage.
+        if self.id and self.file_wav and not self.waveform:
+            try:
+                from catalog.tasks import generate_track_waveform
+                generate_track_waveform.delay(self.id)
+            except Exception:
+                # Avoid breaking the main save path if Celery isn't available.
+                pass
 
     def get_duration(self):
         if self.duration:
