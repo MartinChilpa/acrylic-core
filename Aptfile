@@ -1,4 +1,5 @@
 :repo:deb http://ppa.launchpad.net/chris-needham/ppa/ubuntu jammy main
+:key:https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x01615546D84E3796
 audiowaveform
 libmad0
 libid3tag0
