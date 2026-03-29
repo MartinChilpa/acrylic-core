@@ -1,10 +1,13 @@
 import requests
 import logging
+import copy
+import time
 from django.conf import settings
 
 from rest_framework.viewsets import ViewSet
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.parsers import MultiPartParser, FormParser
 
 from catalog.models import Track
 
@@ -166,10 +169,7 @@ def _extract_artist_name(item):
         value = item.get(key)
         if isinstance(value, str) and value.strip():
             return value.strip()
-
-    # Common alternative shapes:
-    # - {"artist": "Name"}
-    # - {"artist": {"name": "Name"}}
+            
     artist_value = item.get("artist")
     if isinstance(artist_value, dict):
         value = artist_value.get("name")
@@ -359,12 +359,93 @@ class SimilarityViewSet(ViewSet):
             "X-Client-Secret": settings.AIMS_API_SECRET
         }
 
-        response = requests.post(
-            aims_url,
-            json=payload,
-            headers=headers
+        t0 = time.monotonic()
+        logger.info("AIMS by-url request start page=%s link=%r", page, youtube_url)
+        try:
+            response = requests.post(
+                aims_url,
+                json=payload,
+                headers=headers,
+                # Without a timeout, requests can hang indefinitely. Keep a bounded timeout
+                # so we can see what's happening and return a useful error to the frontend.
+                timeout=(10, getattr(settings, "AIMS_REQUEST_TIMEOUT", 60)),
+            )
+        except requests.exceptions.Timeout:
+            logger.warning("AIMS by-url request TIMEOUT after %.2fs", time.monotonic() - t0)
+            return Response(
+                {"detail": "AIMS request timed out."},
+                status=status.HTTP_504_GATEWAY_TIMEOUT,
+            )
+        except requests.exceptions.RequestException as e:
+            logger.exception("AIMS by-url request failed after %.2fs: %r", time.monotonic() - t0, e)
+            return Response(
+                {"detail": "AIMS request failed."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+        finally:
+            # If the request succeeded, we'll log status below; this is only for unexpected hangs.
+            pass
+
+        logger.info(
+            "AIMS by-url response status=%s elapsed=%.2fs bytes=%s",
+            response.status_code,
+            time.monotonic() - t0,
+            len(response.content) if response is not None else None,
         )
 
+        try:
+            aims_payload = response.json()
+        except ValueError:
+            logger.warning(
+                "AIMS by-url invalid JSON status=%s text_preview=%r",
+                response.status_code,
+                (response.text or "")[:500],
+            )
+            return Response(
+                {"detail": "Invalid JSON received from AIMS."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        # Return only the fields our frontend needs.
+        t1 = time.monotonic()
+        simplified = _simplify_aims_payload(aims_payload)
+        logger.info("AIMS simplify elapsed=%.2fs results=%s", time.monotonic() - t1, simplified.get("count"))
+        return Response(simplified, status=response.status_code)
+
+
+class SimilarityPromptViewSet(ViewSet):
+    """
+    Similarity search by free-text prompt.
+    Proxies to AIMS: POST https://api.aimsapi.com/v1/query/by-text
+    """
+
+    def create(self, request):
+        # Handy for frontend dev/testing without calling AIMS.
+        if request.query_params.get("dummy") == "1":
+            return Response(DUMMY_SIMILARITY_RESPONSE, status=status.HTTP_200_OK)
+
+        text = request.data.get("text")
+        page = request.data.get("page", 1)
+        page_size = request.data.get("page_size", 50)
+
+        if not text:
+            return Response({"detail": "text is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        aims_url = "https://api.aimsapi.com/v1/query/by-text"
+        payload = {
+            "text": text,
+            "page": page,
+            "page_size": page_size,
+        }
+
+        headers = {
+            "Content-Type": "application/json",
+            "X-Requested-With": "XMLHttpRequest",
+            "X-Client-Id": settings.AIMS_CLIENT_ID,
+            "X-Client-Secret": settings.AIMS_API_SECRET,
+        }
+
+        response = requests.post(aims_url, json=payload, headers=headers, timeout=30)
         try:
             aims_payload = response.json()
         except ValueError:
@@ -373,5 +454,96 @@ class SimilarityViewSet(ViewSet):
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
-        # Return only the fields our frontend needs.
         return Response(_simplify_aims_payload(aims_payload), status=response.status_code)
+
+
+class SimilarityVideoViewSet(ViewSet):
+    """
+    Upload a video to AIMS and return the cache hash.
+
+    Proxies to AIMS: POST https://api.aimsapi.com/v1/upload
+    """
+
+    parser_classes = (MultiPartParser, FormParser)
+
+    def create(self, request):
+        # Handy for frontend dev/testing without calling AIMS.
+        if request.query_params.get("dummy") == "1":
+            return Response(DUMMY_SIMILARITY_RESPONSE, status=status.HTTP_200_OK)
+
+        video_file = request.FILES.get("video_file")
+        # Don't default paging for /v1/search: AIMS can be strict about accepted fields.
+        page = request.data.get("page")
+        page_size = request.data.get("page_size")
+
+        if not video_file:
+            return Response({"detail": "video_file is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        aims_upload_url = "https://api.aimsapi.com/v1/upload"
+
+        headers = {
+            "X-Requested-With": "XMLHttpRequest",
+            "X-Client-Id": settings.AIMS_CLIENT_ID,
+            "X-Client-Secret": settings.AIMS_API_SECRET,
+        }
+
+        # AIMS expects a multipart upload. Their docs commonly use `file` as the field name.
+        files = {
+            "file": (
+                getattr(video_file, "name", "video"),
+                video_file,
+                getattr(video_file, "content_type", "application/octet-stream"),
+            )
+        }
+
+        response = requests.post(aims_upload_url, headers=headers, files=files, timeout=(10, 120))
+        try:
+            aims_payload = response.json()
+        except ValueError:
+            return Response(
+                {"detail": "Invalid JSON received from AIMS."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        video_hash = aims_payload.get("hash") if isinstance(aims_payload, dict) else None
+        print("[aims] upload hash:", video_hash)
+
+        if not video_hash:
+            return Response(
+                {"detail": "AIMS upload did not return a hash.", "aims": aims_payload},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        aims_search_url = "https://api.aimsapi.com/v1/search"
+        # Follow AIMS documented schema: required `seeds` and optional paging.
+        search_payload = {"seeds": [{"type": "video", "value": video_hash}]}
+
+        search_headers = {
+            **headers,
+            "Content-Type": "application/json",
+        }
+        print("[aims] search payload:", search_payload)
+        search_response = requests.post(
+            aims_search_url,
+            headers=search_headers,
+            json=search_payload,
+            timeout=60,
+        )
+        try:
+            search_json = search_response.json()
+        except ValueError:
+            return Response(
+                {"detail": "Invalid JSON received from AIMS search."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        if search_response.status_code >= 400:
+            # Bubble up the error details so the frontend/dev can adjust the payload quickly.
+            print("[aims] search error:", search_response.status_code, search_json)
+            return Response(
+                {"detail": "AIMS search failed", "aims": search_json},
+                status=search_response.status_code,
+            )
+
+        # Return the same simplified schema as the other similarity endpoints.
+        return Response(_simplify_aims_payload(search_json), status=search_response.status_code)

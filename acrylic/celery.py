@@ -8,8 +8,9 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'acrylic.settings')
 app = Celery('acrylic')
 
 # Lógica para detectar si estamos en local o en la nube
-# Si no hay REDISCLOUD_URL en tu .env local, usará el Redis de tu Docker
-REDIS_URL = config('REDISCLOUD_URL', default='redis://localhost:6379/0')
+# Heroku Redis usually provides REDIS_URL. Older configs may use REDISCLOUD_URL.
+# If neither is set (local dev), default to localhost.
+REDIS_URL = config('REDIS_URL', default=config('REDISCLOUD_URL', default='redis://localhost:6379/0'))
 
 app.conf.update(
     broker_url=REDIS_URL,

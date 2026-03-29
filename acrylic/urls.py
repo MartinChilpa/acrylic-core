@@ -47,6 +47,8 @@ router.register('my-artist/prices', catalog_views.MyPriceViewSet)
 
 # aims
 router.register('aims/similarity',aims_views.SimilarityViewSet,  basename='aims-similarity')
+router.register('aims/similarity-prompt', aims_views.SimilarityPromptViewSet, basename='aims-similarity-prompt')
+router.register('aims/similarity-video', aims_views.SimilarityVideoViewSet, basename='aims-similarity-video')
 
 
 # buyer account
@@ -118,5 +120,4 @@ urlpatterns = [
 
 #router = routers.SimpleRouter()
 #router.register(f'api/{API_VERSION}/library/category', library_views.CategoryViewSet, basename='category')
-
 

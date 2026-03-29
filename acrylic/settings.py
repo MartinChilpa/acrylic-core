@@ -29,7 +29,7 @@ SECRET_KEY = config('DJANGO_SECRET_KEY', default='')
 if not SECRET_KEY:
     if DEBUG:
         # Dev-only fallback. Set DJANGO_SECRET_KEY in .env for anything shared.
-        SECRET_KEY = 'django-insecure-dev-only'
+        SECRET_KEY = 'django-insecure-dev-only-please-set-DJANGO_SECRET_KEY-32bytes'
     else:
         raise RuntimeError('DJANGO_SECRET_KEY is required when DJANGO_DEBUG is false')
 
@@ -252,19 +252,30 @@ AWS_QUERYSTRING_EXPIRE = 3600 * 24 # 1 day
 # django-tagging
 FORCE_LOWERCASE_TAGS = True
 
-SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
-
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': config('REDISCLOUD_URL', ''),
-        'TIMEOUT': 600, # 10 min
-        'KEY_PREFIX': 'cache',
-        'OPTIONS': {
-            'db': '0', # Redis DB nr. 0
+_REDIS_CACHE_URL = config('REDIS_URL', default=config('REDISCLOUD_URL', default=''))
+if _REDIS_CACHE_URL and _REDIS_CACHE_URL.startswith(('redis://', 'rediss://', 'unix://')):
+    SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': _REDIS_CACHE_URL,
+            'TIMEOUT': 600, # 10 min
+            'KEY_PREFIX': 'cache',
+            'OPTIONS': {
+                'db': '0', # Redis DB nr. 0
+            }
         }
     }
-}
+else:
+    # Local/dev fallback when Redis isn't configured.
+    SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'local-dev-cache',
+            'TIMEOUT': 600,
+        }
+    }
 
 
 REST_FRAMEWORK = {
@@ -363,6 +374,12 @@ CHARTMETRIC_REFRESH_TOKEN = config('CHARTMETRIC_REFRESH_TOKEN', default='')
 # AIMS API
 AIMS_API_SECRET = config('AIMS_API_SECRET', default='')
 AIMS_CLIENT_ID = config('AIMS_CLIENT_ID', default='')
+# Webhook URL AIMS will call once it finishes processing an uploaded track.
+# Override in environment; default is a dev placeholder.
+AIMS_WEBHOOK_URL = config(
+    'AIMS_WEBHOOK_URL',
+    default='https://chimneyless-virtuously-charleen.ngrok-free.dev/aims-webhook',
+)
 
 # Spotify API
 

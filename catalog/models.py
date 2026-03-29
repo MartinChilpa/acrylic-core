@@ -2,6 +2,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.db import models
 from django.db.models import Count
+from django.db import transaction
 from django.utils.text import slugify
 from taggit.managers import TaggableManager
 from taggit.models import Tag, TaggedItem
@@ -198,6 +199,12 @@ class Track(BaseModel):
         load_ids = True if not self.id else False
         super(Track, self).save(*args, **kwargs)
 
+        # Ensure we always have a stable client id for AIMS correlation.
+        # We use Track.id (autoincrement) as the consecutive numeric id.
+        if self.id and self.aims_id is None:
+            type(self).objects.filter(pk=self.pk, aims_id__isnull=True).update(aims_id=self.id)
+            self.aims_id = self.id
+
         if load_ids:
             try:
                 # async load spotify ids
@@ -207,6 +214,19 @@ class Track(BaseModel):
             except Exception:
                 # Don't break the save flow if Celery/Redis isn't available.
                 logger.exception("Failed to enqueue external-id tasks for track_id=%s", self.id)
+
+        # Upload to AIMS once we have an audio file and haven't queued it yet.
+        if self.id and (self.file_wav or self.file_mp3) and self.aims_status == self.AimsStatus.PENDING:
+            updated = type(self).objects.filter(pk=self.pk, aims_status=self.AimsStatus.PENDING).update(
+                aims_status=self.AimsStatus.PROCESSING
+            )
+            if updated:
+                try:
+                    from catalog.tasks import upload_track_to_aims
+                    transaction.on_commit(lambda: upload_track_to_aims.delay(self.id))
+                except Exception:
+                    # Avoid breaking the main save path if Celery isn't available.
+                    logger.exception("Failed to enqueue AIMS upload for track_id=%s", self.id)
 
         # Generate waveform JSON when a WAV is present and waveform is missing.
         # Done async because it can be slow and may involve external storage.
