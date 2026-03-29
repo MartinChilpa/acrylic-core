@@ -7,7 +7,7 @@ from chartmetric.tasks import load_chartmetric_ids
 from spotify.tasks import load_spotify_artist_data
 
 
-@receiver(post_save, sender=Artist)
+'''@receiver(post_save, sender=Artist)
 def artist_created(sender, instance, created, **kwargs):
     """ when an artist is created """
     if created:
@@ -18,4 +18,22 @@ def artist_created(sender, instance, created, **kwargs):
         request_contract_signature_task.delay(instance.id)
 
         # add artist to hubspot
+        create_artist_in_hubspot_task.delay(instance.id)'''
+
+
+import logging
+logger = logging.getLogger(__name__)
+
+@receiver(post_save, sender=Artist)
+def artist_created(sender, instance, created, **kwargs):
+    if created:
+        logger.info("Signal triggered")
+
+        load_spotify_artist_data(instance.id)
+        logger.info("Spotify data loaded")
+
+        request_contract_signature_task.delay(instance.id)
+        logger.info("Contract task sent")
+
         create_artist_in_hubspot_task.delay(instance.id)
+        logger.info("Hubspot task sent")

@@ -14,6 +14,7 @@ from content import views as content_views
 from legal import views as legal_views
 from legal import webhooks as legal_webhooks
 from spotify import views as spotify_views
+from aims import views as aims_views
 
 
 router = routers.DefaultRouter()
@@ -43,6 +44,11 @@ router.register('my-artist/tracks', catalog_views.MyTrackViewSet)
 router.register('my-artist/synclists', catalog_views.MySyncListViewSet)
 router.register('my-artist/split-sheets', legal_views.MySplitSheetViewSet)
 router.register('my-artist/prices', catalog_views.MyPriceViewSet)
+
+# aims
+router.register('aims/similarity',aims_views.SimilarityViewSet,  basename='aims-similarity')
+router.register('aims/similarity-prompt', aims_views.SimilarityPromptViewSet, basename='aims-similarity-prompt')
+router.register('aims/similarity-video', aims_views.SimilarityVideoViewSet, basename='aims-similarity-video')
 
 
 # buyer account
@@ -114,5 +120,4 @@ urlpatterns = [
 
 #router = routers.SimpleRouter()
 #router.register(f'api/{API_VERSION}/library/category', library_views.CategoryViewSet, basename='category')
-
 
