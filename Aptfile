@@ -1,4 +1,4 @@
-ppa:chris-needham/ppa
+:repo:deb http://ppa.launchpad.net/chris-needham/ppa/ubuntu jammy main
 audiowaveform
 libmad0
 libid3tag0
