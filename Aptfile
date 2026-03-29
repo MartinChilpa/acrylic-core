@@ -1,1 +1,12 @@
+<<<<<<< ours
 audiowaveform
+libmad0
+libid3tag0
+libsndfile1
+libgd3
+libboost-filesystem1.74.0
+libboost-program-options1.74.0
+libboost-regex1.74.0
+=======
+audiowaveform
+>>>>>>> theirs
