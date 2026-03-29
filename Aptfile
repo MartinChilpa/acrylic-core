@@ -1,6 +1,8 @@
-https://github.com/bbc/audiowaveform/releases/download/1.10.2/audiowaveform_1.10.2-1-12.amd64.deb
+./vendor/audiowaveform_1.10.2-1jammy1_amd64.deb
 libmad0
 libid3tag0
 libsndfile1
 libgd3
 libboost-program-options1.74.0
+libboost-filesystem1.74.0
+libboost-regex1.74.0
