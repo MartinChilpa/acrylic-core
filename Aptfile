@@ -1,6 +1,4 @@
-:repo:deb http://ppa.launchpad.net/chris-needham/ppa/ubuntu jammy main
-:key:https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x01615546D84E3796
-audiowaveform
+https://github.com/bbc/audiowaveform/releases/download/1.10.2/audiowaveform_1.10.2-1-12.amd64.deb
 libmad0
 libid3tag0
 libsndfile1
