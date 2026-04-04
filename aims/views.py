@@ -25,6 +25,7 @@ DUMMY_SIMILARITY_RESPONSE = {
         "duration": 241,
         "release_year": 2024,
         "moods": ["happy"],
+        "highlights": [],
         "cover_image": None,
         "file_mp3": None,
         "spotify_followers": 0,
@@ -161,6 +162,35 @@ def _normalize_moods(value):
     return []
 
 
+def _normalize_highlights(value):
+    """
+    Normalize AIMS highlights into:
+      [{"duration": float, "offset": float}, ...]
+    """
+    if value is None:
+        return []
+    if isinstance(value, dict):
+        for key in ("highlights", "items", "results", "data"):
+            if key in value:
+                return _normalize_highlights(value.get(key))
+        return []
+    if isinstance(value, list):
+        out = []
+        for item in value:
+            if not isinstance(item, dict):
+                continue
+            duration = item.get("duration")
+            offset = item.get("offset")
+            if duration is None or offset is None:
+                continue
+            try:
+                out.append({"duration": float(duration), "offset": float(offset)})
+            except (TypeError, ValueError):
+                continue
+        return out
+    return []
+
+
 def _extract_artist_name(item):
     if not isinstance(item, dict):
         return None
@@ -199,7 +229,7 @@ def _extract_artist_name(item):
     return None
 
 
-def _simplify_aims_item(item):
+def _simplify_aims_item(item, *, debug_moods=False):
     """
     Map a single AIMS result into the compact schema our frontend needs.
     """
@@ -240,8 +270,19 @@ def _simplify_aims_item(item):
             moods_raw = auto.get("moods") or auto.get("mood")
 
     moods = _normalize_moods(moods_raw)
-        
-        
+    if debug_moods:
+        print("[aims] moods:", {"id_client": id_client, "track_name": _as_str(track_name), "moods": moods})
+
+    highlights_raw = None
+    for key in ("highlights", "highlight", "highlights_list", "highlightsList"):
+        if item.get(key) is not None:
+            highlights_raw = item.get(key)
+            break
+    if highlights_raw is None:
+        auto = item.get("auto_tagging_output")
+        if isinstance(auto, dict):
+            highlights_raw = auto.get("highlights")
+    highlights = _normalize_highlights(highlights_raw)
 
     file_wav = None
     file_mp3 = None
@@ -255,6 +296,7 @@ def _simplify_aims_item(item):
     chartmetric_instagram_demographics = None
     chartmetric_instagram_top_cities = None
     chartmetric_instagram_top_countries = None
+    chartmetric_instagram_sports_fit_percent = 0
     if id_client is not None:
         track = (
             Track.objects.select_related("artist")
@@ -273,6 +315,7 @@ def _simplify_aims_item(item):
                 "artist__chartmetric_instagram_demographics",
                 "artist__chartmetric_instagram_top_cities",
                 "artist__chartmetric_instagram_top_countries",
+                "artist__chartmetric_instagram_sports_fit_percent",
             )
             .first()
         )
@@ -294,6 +337,7 @@ def _simplify_aims_item(item):
             chartmetric_instagram_demographics = getattr(track.artist, "chartmetric_instagram_demographics", None)
             chartmetric_instagram_top_cities = getattr(track.artist, "chartmetric_instagram_top_cities", None)
             chartmetric_instagram_top_countries = getattr(track.artist, "chartmetric_instagram_top_countries", None)
+            chartmetric_instagram_sports_fit_percent = getattr(track.artist, "chartmetric_instagram_sports_fit_percent", 0) or 0
 
 
     return {
@@ -303,6 +347,7 @@ def _simplify_aims_item(item):
         "duration": duration,
         "release_year": release_year,
         "moods": moods,
+        "highlights": highlights,
         "cover_image": cover_image,
         "file_wav": file_wav,
         "file_mp3": file_mp3,
@@ -315,19 +360,20 @@ def _simplify_aims_item(item):
         "chartmetric_instagram_demographics": chartmetric_instagram_demographics,
         "chartmetric_instagram_top_cities": chartmetric_instagram_top_cities,
         "chartmetric_instagram_top_countries": chartmetric_instagram_top_countries,
+        "chartmetric_instagram_sports_fit_percent": chartmetric_instagram_sports_fit_percent,
     }
 
 
-def _simplify_aims_payload(payload):
+def _simplify_aims_payload(payload, *, debug_moods=False):
     items = _extract_first_list(payload) or []
     simplified = []
     for item in items:
-        mapped = _simplify_aims_item(item)
+        mapped = _simplify_aims_item(item, debug_moods=debug_moods)
         if mapped is not None:
             simplified.append(mapped)
     return {"count": len(simplified), "results": simplified}
 
-
+ 
 class SimilarityViewSet(ViewSet):
 
     def create(self, request):
@@ -349,7 +395,9 @@ class SimilarityViewSet(ViewSet):
         payload = {
             "link": youtube_url,
             "page": page,
-            "page_size": 20
+            "page_size": 20,
+            "highlights": True,
+            "detailed": True
         }
 
         headers = {
@@ -408,7 +456,8 @@ class SimilarityViewSet(ViewSet):
 
         # Return only the fields our frontend needs.
         t1 = time.monotonic()
-        simplified = _simplify_aims_payload(aims_payload)
+        debug_moods = request.query_params.get("debug_moods") == "1"
+        simplified = _simplify_aims_payload(aims_payload, debug_moods=debug_moods)
         logger.info("AIMS simplify elapsed=%.2fs results=%s", time.monotonic() - t1, simplified.get("count"))
         return Response(simplified, status=response.status_code)
 
@@ -454,7 +503,8 @@ class SimilarityPromptViewSet(ViewSet):
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
-        return Response(_simplify_aims_payload(aims_payload), status=response.status_code)
+        debug_moods = request.query_params.get("debug_moods") == "1"
+        return Response(_simplify_aims_payload(aims_payload, debug_moods=debug_moods), status=response.status_code)
 
 
 class SimilarityVideoViewSet(ViewSet):
@@ -546,4 +596,5 @@ class SimilarityVideoViewSet(ViewSet):
             )
 
         # Return the same simplified schema as the other similarity endpoints.
-        return Response(_simplify_aims_payload(search_json), status=search_response.status_code)
+        debug_moods = request.query_params.get("debug_moods") == "1"
+        return Response(_simplify_aims_payload(search_json, debug_moods=debug_moods), status=search_response.status_code)
