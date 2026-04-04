@@ -298,10 +298,10 @@ def _simplify_aims_item(item, *, debug_moods=False):
     chartmetric_instagram_top_countries = None
     chartmetric_instagram_sports_fit_percent = 0
     if id_client is not None:
-        track = (
+        qs = (
             Track.objects.select_related("artist")
-            .filter(aims_id=id_client)
             .only(
+                "aims_id",
                 "file_wav",
                 "file_mp3",
                 "waveform",
@@ -317,8 +317,17 @@ def _simplify_aims_item(item, *, debug_moods=False):
                 "artist__chartmetric_instagram_top_countries",
                 "artist__chartmetric_instagram_sports_fit_percent",
             )
-            .first()
         )
+
+        # Primary join: AIMS should return the same id_client we sent (Track.aims_id).
+        track = qs.filter(aims_id=id_client).first()
+
+        # Fallback: if we switched to ranges (aims_id = id + offset) and AIMS is returning
+        # legacy ids (e.g. 33), try mapping to the current range (33 + offset).
+        if not track:
+            offset = int(getattr(settings, "AIMS_ID_OFFSET", 0) or 0)
+            if offset and id_client < offset:
+                track = qs.filter(aims_id=id_client + offset).first()
         file_wav = track.file_wav.url if track and track.file_wav else None
         file_mp3 = track.file_mp3.url if track and track.file_mp3 else None
         waveform = track.waveform.url if track and track.waveform else None

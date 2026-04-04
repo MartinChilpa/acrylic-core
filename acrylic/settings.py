@@ -374,6 +374,9 @@ CHARTMETRIC_REFRESH_TOKEN = config('CHARTMETRIC_REFRESH_TOKEN', default='')
 # AIMS API
 AIMS_API_SECRET = config('AIMS_API_SECRET', default='')
 AIMS_CLIENT_ID = config('AIMS_CLIENT_ID', default='')
+# Optional numeric offset to namespace AIMS id_client values per environment.
+# Example: local uses 1000000, staging uses 2000000, prod uses 0.
+AIMS_ID_OFFSET = config('AIMS_ID_OFFSET', default=0, cast=int)
 # Webhook URL AIMS will call once it finishes processing an uploaded track.
 # Override in environment; default is a dev placeholder.
 AIMS_WEBHOOK_URL = config(

@@ -15,6 +15,14 @@ from acrylic.celery import app
 
 logger = logging.getLogger(__name__)
 
+def _looks_like_wav(path):
+    try:
+        with open(path, "rb") as fp:
+            head = fp.read(12)
+        return len(head) >= 12 and head[0:4] == b"RIFF" and head[8:12] == b"WAVE"
+    except OSError:
+        return False
+
 
 @app.task
 def generate_track_waveform(track_id, force=False, samples_per_pixel=1024, bits=8):
@@ -30,7 +38,8 @@ def generate_track_waveform(track_id, force=False, samples_per_pixel=1024, bits=
     except Track.DoesNotExist:
         return False
 
-    if not track.file_wav:
+    audio_field = track.file_wav if track.file_wav else track.file_mp3
+    if not audio_field:
         return False
 
     if track.waveform and not force:
@@ -42,13 +51,48 @@ def generate_track_waveform(track_id, force=False, samples_per_pixel=1024, bits=
         return False
 
     input_path = None
+    wav_path = None
     output_path = None
     try:
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as input_fp:
+        suffix = ".wav" if audio_field == track.file_wav else ".mp3"
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as input_fp:
             input_path = input_fp.name
-            # Copy remote/local storage file into a local temp file.
-            with track.file_wav.open("rb") as src:
+            with audio_field.open("rb") as src:
                 shutil.copyfileobj(src, input_fp)
+
+        # Ensure we pass a real WAV to audiowaveform.
+        if suffix == ".wav" and _looks_like_wav(input_path):
+            wav_path = input_path
+        else:
+            ffmpeg_bin = shutil.which("ffmpeg")
+            if not ffmpeg_bin:
+                logger.error(
+                    "ffmpeg binary not found; cannot decode audio for waveform track_id=%s",
+                    track_id,
+                )
+                return False
+
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as wav_fp:
+                wav_path = wav_fp.name
+
+            cmd = [
+                ffmpeg_bin,
+                "-y",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-i",
+                input_path,
+                "-vn",
+                "-acodec",
+                "pcm_s16le",
+                "-ar",
+                "44100",
+                "-ac",
+                "1",
+                wav_path,
+            ]
+            subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
         with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as output_fp:
             output_path = output_fp.name
@@ -56,7 +100,7 @@ def generate_track_waveform(track_id, force=False, samples_per_pixel=1024, bits=
         cmd = [
             audiowaveform_bin,
             "-i",
-            input_path,
+            wav_path,
             "-o",
             output_path,
             "-z",
@@ -80,7 +124,7 @@ def generate_track_waveform(track_id, force=False, samples_per_pixel=1024, bits=
         logger.exception("waveform generation failed for track_id=%s", track_id)
         return False
     finally:
-        for p in (input_path, output_path):
+        for p in (input_path, wav_path, output_path):
             if p:
                 try:
                     os.remove(p)
@@ -95,7 +139,7 @@ def upload_track_to_aims(track_id, hook_url=None):
 
     POST https://api.aimsapi.com/v1/tracks
     multipart fields:
-      - id_client: client-provided numeric id (we use Track.aims_id)
+      - id_client: client-provided id (we use Track.aims_id, optionally prefixed per environment)
       - track: audio file (prefer WAV, fallback MP3)
       - track_name: track display name
       - hook_url: webhook callback URL

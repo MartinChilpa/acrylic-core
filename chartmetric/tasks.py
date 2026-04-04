@@ -102,13 +102,29 @@ def load_chartmetric_instagram_audience_stats(artist_id, since='2021-09-13', lim
             "fitness & yoga",
             "healthy lifestyle",
         }
-        total = 0.0
+        # Chartmetric can return multiple rows per interest across different timestamps.
+        # We want a snapshot, so keep only the latest row per interest_name.
+        latest_by_interest = {}
         for row in obj_list or []:
             if not isinstance(row, dict):
                 continue
             name = (row.get("interest_name") or "").strip().lower()
             if not name or name not in targets:
                 continue
+
+            prev = latest_by_interest.get(name)
+            if not prev:
+                latest_by_interest[name] = row
+                continue
+
+            # "timestp" is typically YYYY-MM-DD and lexicographically comparable.
+            prev_ts = str(prev.get("timestp") or "")
+            cur_ts = str(row.get("timestp") or "")
+            if cur_ts and (not prev_ts or cur_ts > prev_ts):
+                latest_by_interest[name] = row
+
+        total = 0.0
+        for row in latest_by_interest.values():
             try:
                 total += float(row.get("weight") or 0)
             except (TypeError, ValueError):
