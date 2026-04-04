@@ -202,8 +202,9 @@ class Track(BaseModel):
         # Ensure we always have a stable client id for AIMS correlation.
         # We use Track.id (autoincrement) as the consecutive numeric id.
         if self.id and self.aims_id is None:
-            type(self).objects.filter(pk=self.pk, aims_id__isnull=True).update(aims_id=self.id)
-            self.aims_id = self.id
+            aims_id = int(self.id) + int(getattr(settings, "AIMS_ID_OFFSET", 0) or 0)
+            type(self).objects.filter(pk=self.pk, aims_id__isnull=True).update(aims_id=aims_id)
+            self.aims_id = aims_id
 
         if load_ids:
             try:
@@ -228,9 +229,9 @@ class Track(BaseModel):
                     # Avoid breaking the main save path if Celery isn't available.
                     logger.exception("Failed to enqueue AIMS upload for track_id=%s", self.id)
 
-        # Generate waveform JSON when a WAV is present and waveform is missing.
+        # Generate waveform JSON when an audio file is present and waveform is missing.
         # Done async because it can be slow and may involve external storage.
-        if self.id and self.file_wav and not self.waveform:
+        if self.id and (self.file_wav or self.file_mp3) and not self.waveform:
             try:
                 from catalog.tasks import generate_track_waveform
                 generate_track_waveform.delay(self.id)
