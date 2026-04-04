@@ -66,6 +66,13 @@ class PriceAdmin(admin.ModelAdmin):
     inlines = [TierPriceInline]
 
 
+@admin.register(TierPrice)
+class TierPriceAdmin(admin.ModelAdmin):
+    list_display = ['price', 'tier', 'single_use_price', 'subscription_price', 'created', 'updated']
+    list_filter = ['tier', 'price', 'created', 'updated']
+    search_fields = ['price__name', 'tier__name', 'tier__code']
+
+
 def reload_spotify_ids(modeladmin, request, queryset):
     for track in queryset:
         load_spotify_id.delay(track.id)

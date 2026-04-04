@@ -65,6 +65,8 @@ class Artist(BaseModel):
     chartmetric_instagram_top_countries = models.JSONField(null=True, blank=True)
     chartmetric_instagram_top_cities = models.JSONField(null=True, blank=True)
     chartmetric_instagram_demographics = models.JSONField(null=True, blank=True)
+    # Derived metric: sum of selected interest weights * 100 (Sports + related interests).
+    chartmetric_instagram_sports_fit_percent = models.FloatField(default=0, editable=False)
     chartmetric_instagram_audience_updated_at = models.DateTimeField(null=True, blank=True, editable=False)
 
     tiktok_followers = models.PositiveIntegerField(default=0, editable=False)

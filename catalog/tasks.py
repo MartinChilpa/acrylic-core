@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 @app.task
-def generate_track_waveform(track_id, force=False, samples_per_pixel=256, bits=8):
+def generate_track_waveform(track_id, force=False, samples_per_pixel=1024, bits=8):
     """
     Generate an Audiowaveform-compatible JSON for Peaks.js and store it in Track.waveform.
 

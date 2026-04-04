@@ -95,6 +95,49 @@ def load_chartmetric_instagram_audience_stats(artist_id, since='2021-09-13', lim
         artist.chartmetric_instagram_demographics = (demo_res or {}).get("obj") or []
         updated_any = True
 
+    def _sports_fit_percent_from_interests(obj_list):
+        targets = {
+            "sports",
+            "activewear",
+            "fitness & yoga",
+            "healthy lifestyle",
+        }
+        total = 0.0
+        for row in obj_list or []:
+            if not isinstance(row, dict):
+                continue
+            name = (row.get("interest_name") or "").strip().lower()
+            if not name or name not in targets:
+                continue
+            try:
+                total += float(row.get("weight") or 0)
+            except (TypeError, ValueError):
+                continue
+        return round(total * 100.0, 2)
+
+    # Interests (used to compute sports fit %).
+    time.sleep(1.5)
+    interests_res = cm.get_social_audience_stats(
+        artist.chartmetric_id,
+        domain="instagram",
+        audience_type="followers",
+        stats_type="interest",
+        since=since,
+        # Fetch enough to include the interests we care about (usually appear in top set).
+        limit=50,
+    )
+    if isinstance(interests_res, dict) and interests_res.get("error"):
+        logger.warning(
+            "load_chartmetric_instagram_audience_stats: interest error=%r artist_id=%s chartmetric_id=%r",
+            interests_res.get("error"),
+            artist_id,
+            artist.chartmetric_id,
+        )
+    else:
+        interests_obj = (interests_res or {}).get("obj") or []
+        artist.chartmetric_instagram_sports_fit_percent = _sports_fit_percent_from_interests(interests_obj)
+        updated_any = True
+
     # Only bump the timestamp if at least one request succeeded, and avoid overwriting
     # previous good snapshots with empty data when Chartmetric times out.
     if updated_any:
