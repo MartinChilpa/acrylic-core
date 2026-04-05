@@ -1,6 +1,9 @@
 https://acrylic-private-dev.s3.us-east-1.amazonaws.com/binary/audiowaveform_1.10.2-1jammy1_amd64.deb
 ffmpeg
-libopenblas0
+pulseaudio
+libblas3
+liblapack3
+libatlas3-base
 libmad0
 libid3tag0
 libsndfile1
