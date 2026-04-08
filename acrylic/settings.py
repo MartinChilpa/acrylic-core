@@ -70,6 +70,7 @@ INSTALLED_APPS = [
     'spotify',
     'buyer',
     'club',
+    'label',
 ]
 
 MIDDLEWARE = [

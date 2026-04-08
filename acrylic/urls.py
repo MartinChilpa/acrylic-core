@@ -15,6 +15,7 @@ from legal import views as legal_views
 from legal import webhooks as legal_webhooks
 from spotify import views as spotify_views
 from aims import views as aims_views
+from label import views as label_views
 
 
 router = routers.DefaultRouter()
@@ -105,6 +106,10 @@ urlpatterns = [
         # Application
         path('', include(router.urls)),
 
+        # Ingestion (CSV preview)
+        path('ingestion/upload_csv/', label_views.UploadCsvPreviewView.as_view(), name='upload_csv_preview'),
+        path('ingestion/save_artists/', label_views.SaveArtistsView.as_view(), name='save_artists'),
+
         
         # Accounts
         #path('account/profile/', profile, name='profile'),
@@ -120,4 +125,3 @@ urlpatterns = [
 
 #router = routers.SimpleRouter()
 #router.register(f'api/{API_VERSION}/library/category', library_views.CategoryViewSet, basename='category')
-

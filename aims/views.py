@@ -39,6 +39,73 @@ DUMMY_SIMILARITY_RESPONSE = {
     }],
 }
 
+# Provisional shortcut for frontend dev/testing:
+# If SimilarityPrompt receives text == "test" (query param or body), return 3 dummy results.
+DUMMY_PROMPT_TEST_RESPONSE = {
+    "count": 3,
+    "next": None,
+    "previous": None,
+    "results": [
+        {
+            "id_client": 124,
+            "track_name": "Dummy Track 1",
+            "artist_canonical": "Dummy Artist",
+            "duration": 241,
+            "release_year": 2024,
+            "moods": ["happy"],
+            "highlights": [{"duration": 12.5, "offset": 30.0}],
+            "cover_image": None,
+            "file_mp3": None,
+            "spotify_followers": 0,
+            "instagram_followers": 0,
+            "youtube_followers": 0,
+            "tiktok_followers": 0,
+            "insta_followers_spotify_followers": {"instagram_followers": 0, "spotify_followers": 0},
+            "chartmetric_instagram_demographics": None,
+            "chartmetric_instagram_top_cities": None,
+            "chartmetric_instagram_top_countries": None,
+        },
+        {
+            "id_client": 125,
+            "track_name": "Dummy Track 2",
+            "artist_canonical": "Dummy Artist",
+            "duration": 198,
+            "release_year": 2023,
+            "moods": ["chill", "dreamy"],
+            "highlights": [{"duration": 8.0, "offset": 75.0}],
+            "cover_image": None,
+            "file_mp3": None,
+            "spotify_followers": 0,
+            "instagram_followers": 0,
+            "youtube_followers": 0,
+            "tiktok_followers": 0,
+            "insta_followers_spotify_followers": {"instagram_followers": 0, "spotify_followers": 0},
+            "chartmetric_instagram_demographics": None,
+            "chartmetric_instagram_top_cities": None,
+            "chartmetric_instagram_top_countries": None,
+        },
+        {
+            "id_client": 126,
+            "track_name": "Dummy Track 3",
+            "artist_canonical": "Dummy Artist",
+            "duration": 215,
+            "release_year": 2022,
+            "moods": ["energetic"],
+            "highlights": [{"duration": 10.0, "offset": 120.0}],
+            "cover_image": None,
+            "file_mp3": None,
+            "spotify_followers": 0,
+            "instagram_followers": 0,
+            "youtube_followers": 0,
+            "tiktok_followers": 0,
+            "insta_followers_spotify_followers": {"instagram_followers": 0, "spotify_followers": 0},
+            "chartmetric_instagram_demographics": None,
+            "chartmetric_instagram_top_cities": None,
+            "chartmetric_instagram_top_countries": None,
+        },
+    ],
+}
+
 
 
 def _extract_aims_client_id(payload):
@@ -478,11 +545,14 @@ class SimilarityPromptViewSet(ViewSet):
     """
 
     def create(self, request):
+        text = request.data.get("text") or request.query_params.get("text")
+        if isinstance(text, str) and text.strip().lower() == "test":
+            return Response(DUMMY_PROMPT_TEST_RESPONSE, status=status.HTTP_200_OK)
+
         # Handy for frontend dev/testing without calling AIMS.
         if request.query_params.get("dummy") == "1":
             return Response(DUMMY_SIMILARITY_RESPONSE, status=status.HTTP_200_OK)
 
-        text = request.data.get("text")
         page = request.data.get("page", 1)
         page_size = request.data.get("page_size", 50)
 

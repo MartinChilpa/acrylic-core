@@ -35,5 +35,5 @@ def artist_created(sender, instance, created, **kwargs):
         request_contract_signature_task.delay(instance.id)
         logger.info("Contract task sent")
 
-        create_artist_in_hubspot_task.delay(instance.id)
-        logger.info("Hubspot task sent")
+        #create_artist_in_hubspot_task.delay(instance.id)
+        #logger.info("Hubspot task sent")

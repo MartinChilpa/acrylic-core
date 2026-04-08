@@ -34,6 +34,7 @@ class Account(BaseModel):
     class UserType(models.TextChoices):
         ARTIST = 'ARTIST', 'artist'
         CLUB = 'CLUB', 'club'
+        LABEL = 'LABEL', 'label'
         UND = 'UND', 'und'
     user = models.OneToOneField(settings.AUTH_USER_MODEL, related_name='account', on_delete=models.PROTECT)
     user_type = models.CharField(max_length=20,choices=UserType.choices,default=UserType.ARTIST)

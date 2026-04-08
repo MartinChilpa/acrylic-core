@@ -9,6 +9,7 @@ import requests
 from django.apps import apps
 from django.core.files.base import ContentFile
 from django.conf import settings
+from django.utils import timezone
 
 from acrylic.celery import app
 
@@ -188,6 +189,14 @@ def upload_track_to_aims(track_id, hook_url=None):
     except requests.exceptions.RequestException as e:
         logger.exception("upload_track_to_aims: request failed track_id=%s: %r", track_id, e)
         # Let it be retried manually by resetting aims_status if needed.
+        # Avoid Track.save() here to prevent an immediate re-enqueue loop.
+        try:
+            Track.objects.filter(pk=track.pk).update(
+                aims_status=track.AimsStatus.PENDING,
+                updated=timezone.now(),
+            )
+        except Exception:
+            pass
         return False
 
     try:
@@ -195,20 +204,48 @@ def upload_track_to_aims(track_id, hook_url=None):
     except ValueError:
         payload = {"error": "non_json_response", "status_code": resp.status_code, "text": (resp.text or "")[:500]}
 
+    # If AIMS says the id_client already exists, treat it as success to avoid infinite retries.
+    # This commonly happens when a previous upload succeeded but our system didn't persist SUCCESS.
+    if resp.status_code == 422 and isinstance(payload, dict):
+        id_client_errors = (payload.get("payload") or {}).get("id_client")
+        if isinstance(id_client_errors, list) and any(
+            "already" in str(msg).lower() and "taken" in str(msg).lower() for msg in id_client_errors
+        ):
+            logger.info(
+                "upload_track_to_aims: id_client already exists; marking success track_id=%s aims_id_client=%s",
+                track_id,
+                track.aims_id,
+            )
+            try:
+                Track.objects.filter(pk=track.pk).update(
+                    aims_status=track.AimsStatus.SUCCESS,
+                    updated=timezone.now(),
+                )
+            except Exception:
+                pass
+            return True
+
     if resp.status_code >= 400:
         logger.warning("upload_track_to_aims: aims error track_id=%s status=%s payload=%s", track_id, resp.status_code, payload)
         # Reset to pending so we can retry later.
+        #
+        # IMPORTANT: do not call Track.save() here. Track.save() auto-enqueues an AIMS upload
+        # when aims_status == PENDING, which can create a tight retry loop on any 4xx/5xx.
         try:
-            track.aims_status = track.AimsStatus.PENDING
-            track.save(update_fields=["aims_status"])
+            Track.objects.filter(pk=track.pk).update(
+                aims_status=track.AimsStatus.PENDING,
+                updated=timezone.now(),
+            )
         except Exception:
             pass
         return False
 
     logger.info("upload_track_to_aims: uploaded track_id=%s aims_id_client=%s", track_id, track.aims_id)
     try:
-        track.aims_status = track.AimsStatus.SUCCESS
-        track.save(update_fields=["aims_status"])
+        Track.objects.filter(pk=track.pk).update(
+            aims_status=track.AimsStatus.SUCCESS,
+            updated=timezone.now(),
+        )
     except Exception:
         pass
     return True
