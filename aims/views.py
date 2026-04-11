@@ -2,16 +2,53 @@ import requests
 import logging
 import copy
 import time
+import re
 from django.conf import settings
 
 from rest_framework.viewsets import ViewSet
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.decorators import action
 
 from catalog.models import Track
+from spotify.engine import spotify_client
+from chartmetric.dummy import (
+    DEFAULT_TRACK_VIRALITY,
+    DEFAULT_ARTIST_INSTAGRAM_FOLLOWERS,
+    DEFAULT_ARTIST_SPOTIFY_FOLLOWERS,
+    DEFAULT_ARTIST_TIKTOK_FOLLOWERS,
+    DEFAULT_ARTIST_YOUTUBE_FOLLOWERS,
+    DEFAULT_CHARTMETRIC_INSTAGRAM_DEMOGRAPHICS,
+    DEFAULT_CHARTMETRIC_INSTAGRAM_TOP_CITIES,
+    DEFAULT_CHARTMETRIC_INSTAGRAM_TOP_COUNTRIES,
+    DEFAULT_CHARTMETRIC_INSTAGRAM_SPORTS_FIT_PERCENT,
+)
 
 logger = logging.getLogger(__name__)
+
+# Spotify helpers (track URLs/URIs)
+_SPOTIFY_TRACK_ID_RE = re.compile(r"/track/(?P<id>[A-Za-z0-9]+)")
+_SPOTIFY_TRACK_URI_RE = re.compile(r"^spotify:track:(?P<id>[A-Za-z0-9]+)$", re.IGNORECASE)
+
+
+def _extract_spotify_track_id(value):
+    if not isinstance(value, str):
+        return None
+    v = value.strip()
+    if not v:
+        return None
+    m = _SPOTIFY_TRACK_URI_RE.match(v)
+    if m:
+        return m.group("id")
+    v_no_q = v.split("?", 1)[0].split("#", 1)[0]
+    m = _SPOTIFY_TRACK_ID_RE.search(v_no_q)
+    if m:
+        return m.group("id")
+    # raw id fallback
+    if re.fullmatch(r"[A-Za-z0-9]{10,40}", v):
+        return v
+    return None
 
 # Useful for frontend dev/testing without calling AIMS.
 DUMMY_SIMILARITY_RESPONSE = {
@@ -24,6 +61,9 @@ DUMMY_SIMILARITY_RESPONSE = {
         "artist_canonical": "Dummy Artist",
         "duration": 241,
         "release_year": 2024,
+        "track_virality": None,
+        "price_id": None,
+        "price_uuid": None,
         "moods": ["happy"],
         "highlights": [],
         "cover_image": None,
@@ -52,6 +92,9 @@ DUMMY_PROMPT_TEST_RESPONSE = {
             "artist_canonical": "Dummy Artist",
             "duration": 241,
             "release_year": 2024,
+            "track_virality": None,
+            "price_id": None,
+            "price_uuid": None,
             "moods": ["happy"],
             "highlights": [{"duration": 12.5, "offset": 30.0}],
             "cover_image": None,
@@ -71,6 +114,9 @@ DUMMY_PROMPT_TEST_RESPONSE = {
             "artist_canonical": "Dummy Artist",
             "duration": 198,
             "release_year": 2023,
+            "track_virality": None,
+            "price_id": None,
+            "price_uuid": None,
             "moods": ["chill", "dreamy"],
             "highlights": [{"duration": 8.0, "offset": 75.0}],
             "cover_image": None,
@@ -90,6 +136,9 @@ DUMMY_PROMPT_TEST_RESPONSE = {
             "artist_canonical": "Dummy Artist",
             "duration": 215,
             "release_year": 2022,
+            "track_virality": None,
+            "price_id": None,
+            "price_uuid": None,
             "moods": ["energetic"],
             "highlights": [{"duration": 10.0, "offset": 120.0}],
             "cover_image": None,
@@ -318,12 +367,24 @@ def _simplify_aims_item(item, *, debug_moods=False):
         duration = item.get("duration_sec")
     duration = _as_int(duration)
 
+    match_score = None
+    for key in ("match_score", "matchScore", "score", "similarity", "similarity_score", "similarityScore"):
+        if item.get(key) is None:
+            continue
+        try:
+            match_score = float(item.get(key))
+            break
+        except (TypeError, ValueError):
+            continue
+
     release_year = item.get("release_year")
     if release_year is None:
         release_date = _as_str(item.get("release_date") or item.get("released"))
         if release_date and len(release_date) >= 4 and release_date[:4].isdigit():
             release_year = int(release_date[:4])
     release_year = _as_int(release_year)
+    if release_year is None:
+        release_year = 2021
 
     moods_raw = None
     for key in ("moods", "mood", "mood_tags", "moodTags", "mood_labels", "moodLabels"):
@@ -364,16 +425,26 @@ def _simplify_aims_item(item, *, debug_moods=False):
     chartmetric_instagram_top_cities = None
     chartmetric_instagram_top_countries = None
     chartmetric_instagram_sports_fit_percent = 0
+    track_virality = None
+    price_id = None
+    price_uuid = None
+    track_id = None
+    track_uuid = None
     if id_client is not None:
         qs = (
-            Track.objects.select_related("artist")
+            Track.objects.select_related("artist", "price")
             .only(
                 "aims_id",
+                "id",
+                "uuid",
                 "file_wav",
                 "file_mp3",
                 "waveform",
                 "cover_image",
                 "name",
+                "virality",
+                "price_id",
+                "price__uuid",
                 "artist__name",
                 "artist__spotify_followers",
                 "artist__instagram_followers",
@@ -388,18 +459,29 @@ def _simplify_aims_item(item, *, debug_moods=False):
 
         # Primary join: AIMS should return the same id_client we sent (Track.aims_id).
         track = qs.filter(aims_id=id_client).first()
+        track_id = getattr(track, "id", None) if track else None
+        track_uuid = str(track.uuid) if track and getattr(track, "uuid", None) else None
 
-        # Fallback: if we switched to ranges (aims_id = id + offset) and AIMS is returning
-        # legacy ids (e.g. 33), try mapping to the current range (33 + offset).
-        if not track:
-            offset = int(getattr(settings, "AIMS_ID_OFFSET", 0) or 0)
-            if offset and id_client < offset:
-                track = qs.filter(aims_id=id_client + offset).first()
+        if track:
+            if duration is None and getattr(track, "duration", None):
+                try:
+                    duration = int(int(track.duration) / 1000)
+                except Exception:
+                    pass
+            if (release_year is None or release_year == 2021) and getattr(track, "released", None):
+                try:
+                    release_year = int(track.released.year)
+                except Exception:
+                    pass
+
         file_wav = track.file_wav.url if track and track.file_wav else None
         file_mp3 = track.file_mp3.url if track and track.file_mp3 else None
         waveform = track.waveform.url if track and track.waveform else None
         cover_image = track.cover_image.url if track and track.cover_image else None
         track_name_track = track.name if track and track.name else None
+        track_virality = getattr(track, "virality", None) if track else None
+        price_id = getattr(track, "price_id", None) if track else None
+        price_uuid = str(track.price.uuid) if track and getattr(track, "price", None) else None
         # Prefer our internal Artist name when we have it.
         if track and getattr(track, "artist", None) and track.artist:
             if track.artist.name:
@@ -415,19 +497,48 @@ def _simplify_aims_item(item, *, debug_moods=False):
             chartmetric_instagram_top_countries = getattr(track.artist, "chartmetric_instagram_top_countries", None)
             chartmetric_instagram_sports_fit_percent = getattr(track.artist, "chartmetric_instagram_sports_fit_percent", 0) or 0
 
+            # Optional dummy fallbacks for demo/dev when Chartmetric hasn't populated yet.
+            if bool(getattr(settings, "CHARTMETRIC_USE_DUMMY_FALLBACKS", False)):
+                if not track_virality:
+                    track_virality = DEFAULT_TRACK_VIRALITY
+                if not spotify_followers:
+                    spotify_followers = DEFAULT_ARTIST_SPOTIFY_FOLLOWERS
+                if not instagram_followers:
+                    instagram_followers = DEFAULT_ARTIST_INSTAGRAM_FOLLOWERS
+                if not tiktok_followers:
+                    tiktok_followers = DEFAULT_ARTIST_TIKTOK_FOLLOWERS
+                if not youtube_followers:
+                    youtube_followers = DEFAULT_ARTIST_YOUTUBE_FOLLOWERS
+
+                if not chartmetric_instagram_demographics:
+                    chartmetric_instagram_demographics = DEFAULT_CHARTMETRIC_INSTAGRAM_DEMOGRAPHICS
+                if not chartmetric_instagram_top_cities:
+                    chartmetric_instagram_top_cities = DEFAULT_CHARTMETRIC_INSTAGRAM_TOP_CITIES
+                if not chartmetric_instagram_top_countries:
+                    chartmetric_instagram_top_countries = DEFAULT_CHARTMETRIC_INSTAGRAM_TOP_COUNTRIES
+                if not chartmetric_instagram_sports_fit_percent:
+                    chartmetric_instagram_sports_fit_percent = DEFAULT_CHARTMETRIC_INSTAGRAM_SPORTS_FIT_PERCENT
+
 
     return {
         "id_client": id_client,
+        "track_id": track_id,
+        "track_uuid": track_uuid,
         "track_name": _as_str(track_name),
         "artist_canonical": _as_str(artist_canonical),
+        "match_score": match_score,
         "duration": duration,
         "release_year": release_year,
+        "track_virality": track_virality,
+        "price_id": price_id,
+        "price_uuid": price_uuid,
         "moods": moods,
         "highlights": highlights,
         "cover_image": cover_image,
         "file_wav": file_wav,
         "file_mp3": file_mp3,
         "waveform": waveform,
+        "waveform_url": waveform,
         "track_name_track": track_name_track,
         "spotify_followers": spotify_followers,
         "instagram_followers": instagram_followers,
@@ -452,63 +563,39 @@ def _simplify_aims_payload(payload, *, debug_moods=False):
  
 class SimilarityViewSet(ViewSet):
 
-    def create(self, request):
-        # Handy for frontend dev/testing without calling AIMS.
-        if request.query_params.get("dummy") == "1":
-            return Response(DUMMY_SIMILARITY_RESPONSE, status=status.HTTP_200_OK)
-
-        youtube_url = request.data.get("youtube_url")
-        page = request.data.get("page", 1)
-
-        if not youtube_url:
-            return Response(
-                {"detail": "youtube_url is required"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
+    def _aims_query_by_url(self, *, link, page=1, page_size=20, highlights=True, detailed=True, request=None):
         aims_url = "https://api.aimsapi.com/v1/query/by-url"
 
         payload = {
-            "link": youtube_url,
+            "link": link,
             "page": page,
-            "page_size": 20,
-            "highlights": True,
-            "detailed": True
+            "page_size": page_size,
+            "highlights": bool(highlights),
+            "detailed": bool(detailed),
         }
 
         headers = {
             "Content-Type": "application/json",
             "X-Requested-With": "XMLHttpRequest",
             "X-Client-Id": settings.AIMS_CLIENT_ID,
-            "X-Client-Secret": settings.AIMS_API_SECRET
+            "X-Client-Secret": settings.AIMS_API_SECRET,
         }
 
         t0 = time.monotonic()
-        logger.info("AIMS by-url request start page=%s link=%r", page, youtube_url)
+        logger.info("AIMS by-url request start page=%s link=%r", page, link)
         try:
             response = requests.post(
                 aims_url,
                 json=payload,
                 headers=headers,
-                # Without a timeout, requests can hang indefinitely. Keep a bounded timeout
-                # so we can see what's happening and return a useful error to the frontend.
                 timeout=(10, getattr(settings, "AIMS_REQUEST_TIMEOUT", 60)),
             )
         except requests.exceptions.Timeout:
             logger.warning("AIMS by-url request TIMEOUT after %.2fs", time.monotonic() - t0)
-            return Response(
-                {"detail": "AIMS request timed out."},
-                status=status.HTTP_504_GATEWAY_TIMEOUT,
-            )
+            return Response({"detail": "AIMS request timed out."}, status=status.HTTP_504_GATEWAY_TIMEOUT)
         except requests.exceptions.RequestException as e:
             logger.exception("AIMS by-url request failed after %.2fs: %r", time.monotonic() - t0, e)
-            return Response(
-                {"detail": "AIMS request failed."},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
-        finally:
-            # If the request succeeded, we'll log status below; this is only for unexpected hangs.
-            pass
+            return Response({"detail": "AIMS request failed."}, status=status.HTTP_502_BAD_GATEWAY)
 
         logger.info(
             "AIMS by-url response status=%s elapsed=%.2fs bytes=%s",
@@ -525,17 +612,158 @@ class SimilarityViewSet(ViewSet):
                 response.status_code,
                 (response.text or "")[:500],
             )
-            return Response(
-                {"detail": "Invalid JSON received from AIMS."},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
+            return Response({"detail": "Invalid JSON received from AIMS."}, status=status.HTTP_502_BAD_GATEWAY)
 
-        # Return only the fields our frontend needs.
         t1 = time.monotonic()
-        debug_moods = request.query_params.get("debug_moods") == "1"
+        debug_moods = bool(request and request.query_params.get("debug_moods") == "1")
         simplified = _simplify_aims_payload(aims_payload, debug_moods=debug_moods)
         logger.info("AIMS simplify elapsed=%.2fs results=%s", time.monotonic() - t1, simplified.get("count"))
         return Response(simplified, status=response.status_code)
+
+    def _similarity_from_spotify(self, request, spotify_url: str):
+        spotify_id = _extract_spotify_track_id(spotify_url)
+        if not spotify_id:
+            return Response({"detail": "spotify_url is not a valid spotify track url/uri"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            sp = spotify_client()
+            track_info = sp.track(spotify_id)
+        except Exception:
+            logger.exception("Spotify track lookup failed spotify_id=%r", spotify_id)
+            return Response({"detail": "Spotify request failed"}, status=status.HTTP_502_BAD_GATEWAY)
+
+        track_name = (track_info.get("name") or "").strip()
+        artists = track_info.get("artists") or []
+        artist_name = ((artists[0] or {}).get("name") if artists else None) or ""
+        artist_names = [a.get("name") for a in artists if isinstance(a, dict) and a.get("name")]
+
+        album = track_info.get("album") or {}
+        images = album.get("images") or []
+        image_url = ((images[0] or {}).get("url") if images else None) or None
+
+        external_ids = track_info.get("external_ids") or {}
+        isrc = (external_ids.get("isrc") or "").strip().upper() or None
+
+        qs = Track.objects.select_related("artist").all()
+        track_obj = qs.filter(spotify_id=spotify_id).first()
+        if track_obj is None and isrc:
+            track_obj = qs.filter(isrc=isrc).first()
+
+        exists_in_db = bool(track_obj)
+
+        page = request.data.get("page") or request.query_params.get("page") or 1
+        page_size = request.data.get("page_size") or request.query_params.get("page_size") or 20
+        try:
+            page = int(page)
+        except (TypeError, ValueError):
+            page = 1
+        try:
+            page_size = int(page_size)
+        except (TypeError, ValueError):
+            page_size = 20
+        if page < 1:
+            page = 1
+        if page_size < 1:
+            page_size = 20
+
+        aims_response = self._aims_query_by_url(
+            link=spotify_url,
+            page=page,
+            page_size=page_size,
+            highlights=True,
+            detailed=True,
+            request=request,
+        )
+
+        aims_data = aims_response.data if isinstance(aims_response.data, dict) else {"count": 0, "results": []}
+        if "count" not in aims_data or "results" not in aims_data:
+            aims_data = {"count": 0, "results": []}
+
+        seed_track_payload = None
+        if track_obj:
+            seed_track_payload = _simplify_aims_item(
+                {
+                    "id_client": track_obj.aims_id,
+                    "track_name": track_name,
+                    "artist_canonical": artist_name,
+                    "release_year": None,
+                    "duration": None,
+                }
+            )
+            if isinstance(seed_track_payload, dict):
+                # Keep extra identifiers handy for the client.
+                seed_track_payload["spotify_id"] = (track_obj.spotify_id or spotify_id) or None
+                seed_track_payload["isrc"] = (track_obj.isrc or isrc) or None
+                seed_track_payload["audience_sport_fit_percent"] = seed_track_payload.get("chartmetric_instagram_sports_fit_percent")
+
+        response_payload = {
+            "exists_in_db": exists_in_db,
+            "track_uuid": getattr(track_obj, "uuid", None),
+            "spotify": {
+                "spotify_id": spotify_id,
+                "isrc": isrc,
+                "name": track_name,
+                "artist": artist_name,
+                "artists": artist_names,
+                "image": image_url,
+                "url": spotify_url,
+            },
+            # Keep backwards-compatible AIMS shape at the top-level.
+            "count": aims_data.get("count") or 0,
+            "results": aims_data.get("results") or [],
+            # New: seed_track object to explicitly expose whether the seed is in our catalog.
+            "seed_track": {
+                "in_catalog": exists_in_db,
+                "track": seed_track_payload,
+            },
+        }
+
+        response_payload["aims_status_code"] = aims_response.status_code
+        return Response(response_payload, status=aims_response.status_code)
+
+    def create(self, request):
+        # Handy for frontend dev/testing without calling AIMS.
+        if request.query_params.get("dummy") == "1":
+            return Response(DUMMY_SIMILARITY_RESPONSE, status=status.HTTP_200_OK)
+
+        spotify_url = request.data.get("spotify_url") or request.query_params.get("spotify_url")
+        if spotify_url:
+            return self._similarity_from_spotify(request, spotify_url)
+
+        youtube_url = request.data.get("youtube_url")
+        page = request.data.get("page", 1)
+
+        if not youtube_url:
+            return Response(
+                {"detail": "youtube_url is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if isinstance(youtube_url, str) and ("open.spotify.com/track/" in youtube_url or youtube_url.lower().startswith("spotify:track:")):
+            return self._similarity_from_spotify(request, youtube_url)
+        return self._aims_query_by_url(link=youtube_url, page=page, page_size=20, highlights=True, detailed=True, request=request)
+
+    @action(detail=False, methods=["post"], url_path="spotify")
+    def spotify(self, request):
+        """
+        Similarity search using a Spotify track URL/URI as seed.
+
+        Always returns Spotify metadata (name, artist, image) and whether we have the track in our DB.
+        If we can obtain an audio URL (internal file_wav/file_mp3 or Spotify preview_url), we also return AIMS similarity results.
+        """
+        if request.query_params.get("dummy") == "1":
+            return Response(
+                {
+                    "exists_in_db": False,
+                    "spotify": {"name": "Dummy Track", "artist": "Dummy Artist", "image": None},
+                    "similarity": DUMMY_SIMILARITY_RESPONSE,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        spotify_url = request.data.get("spotify_url") or request.query_params.get("spotify_url")
+        if not spotify_url:
+            return Response({"detail": "spotify_url is required"}, status=status.HTTP_400_BAD_REQUEST)
+        return self._similarity_from_spotify(request, spotify_url)
 
 
 class SimilarityPromptViewSet(ViewSet):

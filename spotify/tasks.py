@@ -49,7 +49,10 @@ def load_spotify_id(track_id, force=False, load_data=False):
     try:
         track = Track.objects.get(id=track_id)
     except Track.DoesNotExist:
-        pass
+        # This can happen if the task was enqueued before the DB transaction committed,
+        # or if the worker is pointing at a different database.
+        print(f'Track {track_id} not found')
+        return False
     else:
         if force == True or track.spotify_id == '':
             spotify = spotify_client()
@@ -68,7 +71,8 @@ def load_spotify_id(track_id, force=False, load_data=False):
                     print(f'Artist Spotify ID: {artist.spotify_id}')
             else:
                 print(f'{track.name}, {track.artist.name} - ISRC {track.isrc} No track ID found')
-            track.save()
+            # Avoid triggering AIMS/waveform as a side-effect of enrichment.
+            track.save(skip_audio_tasks=True)
 
         if load_data:
             # call load data
@@ -93,18 +97,20 @@ def load_spotify_track_data(track_id, force=False):
             album_images = track_info['album']['images']
 
             # load name
-            if force or not track.name:
-                track.name = track_info['name']
+            spotify_name = (track_info.get('name') or '').strip()
+            if spotify_name and (force or (track.name or '').strip() != spotify_name):
+                track.name = spotify_name
 
             # load cover art
             if force or not track.cover_image:
                 try:
                     image_url = track_info['album']['images'][0]['url']
-                except KeyError:
+                except (KeyError, IndexError, TypeError):
                     image_url = ''
                 else:
-                    image_file = requests.get(image_url)
-                    track.cover_image.save('cover.jpg', ContentFile(image_file.content))
+                    if image_url:
+                        image_file = requests.get(image_url)
+                        track.cover_image.save('cover.jpg', ContentFile(image_file.content))
 
             # load 30 sec preview mp3
             if force or not track.snippet and track_info.get('preview_url', None):
@@ -112,7 +118,8 @@ def load_spotify_track_data(track_id, force=False):
                 track.snippet.save('snippet.mp3', ContentFile(snippet_file.content))
             
             # save track
-            track.save()
+            # Avoid triggering AIMS/waveform as a side-effect of enrichment.
+            track.save(skip_audio_tasks=True)
 
 
 @app.task

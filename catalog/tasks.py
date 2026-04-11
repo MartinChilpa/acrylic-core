@@ -143,6 +143,7 @@ def upload_track_to_aims(track_id, hook_url=None):
       - id_client: client-provided id (we use Track.aims_id, optionally prefixed per environment)
       - track: audio file (prefer WAV, fallback MP3)
       - track_name: track display name
+      - release_year: integer year (Track.released.year or settings.AIMS_DEFAULT_RELEASE_YEAR)
       - hook_url: webhook callback URL
     """
     Track = apps.get_model("catalog", "Track")
@@ -162,6 +163,38 @@ def upload_track_to_aims(track_id, hook_url=None):
         logger.warning("upload_track_to_aims: track_id=%s has no audio file (wav/mp3)", track_id)
         return False
 
+    # Best-effort: snapshot Chartmetric virality at upload time.
+    # Do not block AIMS upload if Chartmetric fails or isn't configured.
+    if getattr(track, "chartmetric_id", ""):
+        try:
+            from chartmetric.engine import Chartmetric
+            from chartmetric.dummy import DEFAULT_TRACK_VIRALITY
+
+            cm = Chartmetric()
+            if cm.authenticate():
+                value = cm.get_track_virality(track.chartmetric_id)
+                if not (isinstance(value, dict) and value.get("error")):
+                    if value is None and bool(getattr(settings, "CHARTMETRIC_USE_DUMMY_FALLBACKS", False)):
+                        value = DEFAULT_TRACK_VIRALITY
+                    if value is not None:
+                        Track.objects.filter(pk=track.pk).update(virality=value, updated=timezone.now())
+                    logger.info(
+                        "upload_track_to_aims: saved virality=%s track_id=%s chartmetric_id=%s",
+                        value,
+                        track_id,
+                        track.chartmetric_id,
+                    )
+            else:
+                logger.warning(
+                    "upload_track_to_aims: Chartmetric auth failed; skipping virality track_id=%s chartmetric_id=%s",
+                    track_id,
+                    track.chartmetric_id,
+                )
+        except Exception:
+            logger.exception("upload_track_to_aims: failed to fetch/save virality track_id=%s", track_id)
+    else:
+        logger.info("upload_track_to_aims: no chartmetric_id; skipping virality track_id=%s", track_id)
+
     aims_url = "https://api.aimsapi.com/v1/tracks"
     headers = {
         "X-Requested-With": "XMLHttpRequest",
@@ -170,9 +203,19 @@ def upload_track_to_aims(track_id, hook_url=None):
     }
 
     hook_url = hook_url or getattr(settings, "AIMS_WEBHOOK_URL", "")
+    release_year = None
+    if getattr(track, "released", None):
+        try:
+            release_year = int(track.released.year)
+        except Exception:
+            release_year = None
+    if release_year is None:
+        release_year = int(getattr(settings, "AIMS_DEFAULT_RELEASE_YEAR", 2021) or 2021)
+
     data = {
         "id_client": str(track.aims_id),
         "track_name": track.name or "",
+        "release_year": release_year,
         "hook_url": hook_url,
     }
 
@@ -218,7 +261,7 @@ def upload_track_to_aims(track_id, hook_url=None):
             )
             try:
                 Track.objects.filter(pk=track.pk).update(
-                    aims_status=track.AimsStatus.SUCCESS,
+                    aims_status=track.AimsStatus.FINISHED,
                     updated=timezone.now(),
                 )
             except Exception:
@@ -240,10 +283,16 @@ def upload_track_to_aims(track_id, hook_url=None):
             pass
         return False
 
-    logger.info("upload_track_to_aims: uploaded track_id=%s aims_id_client=%s", track_id, track.aims_id)
+    logger.info(
+        "upload_track_to_aims: uploaded track_id=%s aims_id_client=%s hook_url=%r",
+        track_id,
+        track.aims_id,
+        hook_url,
+    )
+    # Keep it in PROCESSING until webhook confirms completion.
     try:
         Track.objects.filter(pk=track.pk).update(
-            aims_status=track.AimsStatus.SUCCESS,
+            aims_status=track.AimsStatus.PROCESSING,
             updated=timezone.now(),
         )
     except Exception:
