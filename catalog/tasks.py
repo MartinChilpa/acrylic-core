@@ -3,18 +3,48 @@ import os
 import shutil
 import subprocess
 import tempfile
+import re
 
 import requests
 
 from django.apps import apps
 from django.core.files.base import ContentFile
+from django.core.files import File
 from django.conf import settings
 from django.utils import timezone
+from django.db import transaction
+from django.utils.text import slugify
 
 from acrylic.celery import app
 
 
 logger = logging.getLogger(__name__)
+
+_GDRIVE_FILE_ID_RE = re.compile(r"/file/d/(?P<id>[^/]+)")
+
+
+def _maybe_google_drive_direct_url(url: str) -> str:
+    if not isinstance(url, str) or not url.strip():
+        return url
+    match = _GDRIVE_FILE_ID_RE.search(url)
+    if not match:
+        return url
+    file_id = match.group("id")
+    return f"https://drive.google.com/uc?export=download&id={file_id}"
+
+
+def _download_to_tempfile(url: str, *, suffix=".mp3") -> str:
+    url = _maybe_google_drive_direct_url(url)
+    with requests.get(url, stream=True, timeout=(10, 120), allow_redirects=True) as resp:
+        resp.raise_for_status()
+        tmp = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
+        try:
+            for chunk in resp.iter_content(chunk_size=1024 * 1024):
+                if chunk:
+                    tmp.write(chunk)
+        finally:
+            tmp.close()
+    return tmp.name
 
 def _looks_like_wav(path):
     try:
@@ -298,3 +328,87 @@ def upload_track_to_aims(track_id, hook_url=None):
     except Exception:
         pass
     return True
+
+
+@app.task
+def ingest_track_audio_from_url(track_id, source_url, *, label_slug=None, artist_spotify_id=None, name=""):
+    """
+    Background ingestion for label bulk uploads.
+
+    Downloads an MP3 from `source_url` and stores it on Track.file_wav using the deterministic
+    S3 key pattern (tracks/<label_slug>/<artist_spotify_id>/<isrc>.mp3) via upload_to.
+    """
+    Track = apps.get_model("catalog", "Track")
+
+    try:
+        track = Track.objects.select_related("artist", "artist__label").get(id=track_id)
+    except Track.DoesNotExist:
+        logger.warning("ingest_track_audio_from_url: track_id=%s NOT FOUND", track_id)
+        return {"ok": False, "error": "track_not_found"}
+
+    # Ensure label context for deterministic keys.
+    if not label_slug:
+        label = getattr(getattr(track, "artist", None), "label", None)
+        label_slug = (getattr(label, "slug", None) or "").strip() or slugify(getattr(label, "label_name", "") or "")
+        if not label_slug:
+            label_slug = "acrylic"
+
+    if not artist_spotify_id:
+        artist_spotify_id = (getattr(getattr(track, "artist", None), "spotify_id", None) or "").strip() or None
+
+    tmp_path = None
+    try:
+        tmp_path = _download_to_tempfile(source_url, suffix=".mp3")
+        with open(tmp_path, "rb") as fp:
+            uploaded = File(fp, name=f"{(track.isrc or '').upper()}.mp3" if track.isrc else "track.mp3")
+
+            with transaction.atomic():
+                # Optionally update name (non-empty only).
+                if name and not (track.name or "").strip():
+                    Track.objects.filter(pk=track.pk).update(name=name.strip(), updated=timezone.now())
+
+                # Clean up any previous upload if key differs.
+                desired_key = f"tracks/{label_slug}/{artist_spotify_id}/{str(track.isrc).upper()}.mp3" if (artist_spotify_id and track.isrc) else None
+                if desired_key and track.file_wav and track.file_wav.name and track.file_wav.name != desired_key:
+                    try:
+                        track.file_wav.delete(save=False)
+                    except Exception:
+                        pass
+
+                if desired_key:
+                    try:
+                        track.file_wav.storage.delete(desired_key)
+                    except Exception:
+                        pass
+
+                track._upload_as_label = True
+                track._label_slug = label_slug
+                track._artist_spotify_id = artist_spotify_id
+                track._label_fallback = label_slug
+                track.file_wav.save(os.path.basename(uploaded.name), uploaded, save=False)
+                Track.objects.filter(pk=track.pk).update(file_wav=track.file_wav.name, updated=timezone.now())
+
+                # Enqueue enrichment for existing tracks (created elsewhere) as best-effort.
+                def _enqueue():
+                    try:
+                        from spotify.tasks import load_spotify_id
+                        from chartmetric.tasks import load_chartmetric_ids
+
+                        load_spotify_id.delay(track.id, load_data=True)
+                        load_chartmetric_ids.delay(track.id)
+                    except Exception:
+                        pass
+
+                transaction.on_commit(_enqueue)
+
+        logger.info("ingest_track_audio_from_url: saved track_id=%s s3_key=%r", track.id, track.file_wav.name)
+        return {"ok": True, "track_id": track.id, "track_uuid": str(track.uuid), "s3_key": track.file_wav.name}
+    except Exception as e:
+        logger.exception("ingest_track_audio_from_url: failed track_id=%s: %r", track_id, e)
+        return {"ok": False, "error": str(e)}
+    finally:
+        if tmp_path:
+            try:
+                os.unlink(tmp_path)
+            except Exception:
+                pass
