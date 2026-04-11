@@ -342,10 +342,9 @@ class TrackViewSet(viewsets.ReadOnlyModelViewSet):
 
         results = []
         errors = []
-        saved = 0
+        enqueued = 0
 
         for idx, item in enumerate(tracks):
-            tmp_path = None
             try:
                 isrc = item["isrc"]
                 source_url = (item.get("mp3") or "").strip()
@@ -373,32 +372,48 @@ class TrackViewSet(viewsets.ReadOnlyModelViewSet):
                     if artist.label_id != label.id:
                         raise ValueError("Artist does not belong to this label")
 
-                tmp_path = _download_to_tempfile(source_url, suffix=".mp3")
-                with open(tmp_path, "rb") as fp:
-                    uploaded = File(fp, name=f"{isrc}.mp3")
-                    out = _save_label_track_audio_to_s3(
-                        label=label,
-                        artist=artist,
-                        isrc=isrc,
-                        uploaded=uploaded,
-                        label_slug=label_slug,
-                        artist_spotify_id=artist_spotify_id,
-                        name=(item.get("name") or "").strip(),
-                    )
-                    results.append({"index": idx, **out})
-                    saved += 1
+                # Create the Track row immediately (fast) so the client can see UUIDs,
+                # then enqueue the slow download+upload work to Celery to avoid Heroku H12.
+                track, created = Track.objects.get_or_create(
+                    artist=artist,
+                    isrc=isrc,
+                    defaults={"name": (item.get("name") or "").strip()},
+                )
+                if not created and (item.get("name") or "").strip() and not (track.name or "").strip():
+                    Track.objects.filter(pk=track.pk).update(name=(item.get("name") or "").strip(), updated=timezone.now())
+
+                from catalog.tasks import ingest_track_audio_from_url
+
+                async_res = ingest_track_audio_from_url.delay(
+                    track.id,
+                    source_url,
+                    label_slug=label_slug,
+                    artist_spotify_id=artist_spotify_id,
+                    name=(item.get("name") or "").strip(),
+                )
+                enqueued += 1
+                results.append(
+                    {
+                        "index": idx,
+                        "track_id": track.id,
+                        "track_uuid": str(track.uuid),
+                        "created": created,
+                        "task_id": getattr(async_res, "id", None),
+                    }
+                )
             except Exception as e:
                 errors.append({"index": idx, "detail": str(e)})
-            finally:
-                if tmp_path:
-                    try:
-                        os.unlink(tmp_path)
-                    except Exception:
-                        pass
 
         return Response(
-            {"count": len(tracks), "saved": saved, "errors": errors, "results": results},
-            status=status.HTTP_200_OK,
+            {
+                "count": len(tracks),
+                "saved": enqueued,  # backwards-compatible key
+                "enqueued": enqueued,
+                "mode": "async",
+                "errors": errors,
+                "results": results,
+            },
+            status=status.HTTP_202_ACCEPTED,
         )
     
 class MyTrackViewSet(viewsets.ModelViewSet):

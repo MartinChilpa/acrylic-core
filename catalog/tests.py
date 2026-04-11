@@ -4,10 +4,13 @@ import tempfile
 
 from django.core.files.base import ContentFile
 from django.test import TestCase, override_settings
+from django.contrib.auth import get_user_model
 
 from artist.models import Artist
 from catalog.models import Track
 from catalog.tasks import upload_track_to_aims
+from label.models import Label
+from rest_framework.test import APIClient
 
 
 class CatalogViralityTests(TestCase):
@@ -66,3 +69,45 @@ class CatalogViralityTests(TestCase):
 
         track.refresh_from_db()
         self.assertAlmostEqual(track.virality, 12.34, places=6)
+
+
+class CatalogIngestionAsyncTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        User = get_user_model()
+        self.user = User.objects.create_user(username="label_user", password="p")
+        self.label = Label.objects.create(user=self.user, label_name="My Label")
+        with (
+            patch("artist.signals.load_spotify_artist_data", return_value=True),
+            patch("artist.signals.request_contract_signature_task.delay", return_value=None),
+        ):
+            self.artist = Artist.objects.create(name="A", label=self.label, spotify_id="artist123")
+        self.client.force_authenticate(user=self.user)
+
+    def test_ingestion_save_tracks_enqueues_tasks(self):
+        class _Async:
+            id = "task-1"
+
+        with (
+            patch("catalog.tasks.ingest_track_audio_from_url.delay", return_value=_Async()),
+            patch("catalog.models.load_spotify_id.delay", return_value=None),
+            patch("catalog.models.load_chartmetric_ids.delay", return_value=None),
+        ):
+            res = self.client.post(
+                "/api/v1/ingestion/save_tracks/",
+                {
+                    "tracks": [
+                        {"mp3": "https://example.com/a.mp3", "isrc": "MXF148700181", "artist_spotify_id": "artist123", "name": "T1"},
+                        {"mp3": "https://example.com/b.mp3", "isrc": "MXF148700182", "artist_spotify_id": "artist123", "name": "T2"},
+                    ]
+                },
+                format="json",
+            )
+
+        self.assertEqual(res.status_code, 202)
+        payload = res.json()
+        self.assertEqual(payload["count"], 2)
+        self.assertEqual(payload["enqueued"], 2)
+        self.assertEqual(payload["mode"], "async")
+        self.assertEqual(len(payload["results"]), 2)
+        self.assertEqual(payload["results"][0]["task_id"], "task-1")
