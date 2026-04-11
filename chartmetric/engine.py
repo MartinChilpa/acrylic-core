@@ -74,8 +74,12 @@ class Chartmetric():
         }
         response = self._request('post', 'token', data)
         # POST request to get the access token
-        self.auth_token = response['token']
-        logger.info("Chartmetric authenticated (token received).")
+        if isinstance(response, dict) and response.get("token"):
+            self.auth_token = response["token"]
+            logger.info("Chartmetric authenticated (token received).")
+            return True
+        logger.warning("Chartmetric auth failed: %r", response)
+        return False
 
     def get_track_artist_ids_from_isrc(self, isrc):
         path = f'search?q={isrc}&type=tracks&limit=1'
@@ -84,6 +88,56 @@ class Chartmetric():
     def get_artist_id_from_spotify(self, spotify_id):
         path = f'search?q={spotify_id}&type=artists&limit=1'
         return self._request('get', path)
+
+    def get_track_chartmetric_stats_most_history(self, track_id):
+        """
+        Wrapper for:
+        /api/track/{id}/chartmetric/stats/most-history
+
+        Returns the raw API response dict, typically:
+        {"obj": [{"domain": "chartmetric", "type": "score", "data": [...]}, ...]}
+        """
+        path = f"track/{track_id}/chartmetric/stats/most-history"
+        return self._request("get", path)
+
+    def get_track_virality(self, track_id):
+        """
+        Returns a single numeric value (track_virality) extracted from:
+        /api/track/{id}/chartmetric/stats/most-history
+
+        Specifically: the first available `value` from the first matching obj row
+        (domain=chartmetric, type=score), taking row["data"][0]["value"].
+
+        On error, returns the raw error dict from _request().
+        """
+        res = self.get_track_chartmetric_stats_most_history(track_id)
+        if not isinstance(res, dict) or res.get("error"):
+            return res
+
+        obj = res.get("obj") or []
+        if not isinstance(obj, list):
+            obj = []
+
+        for row in obj:
+            if not isinstance(row, dict):
+                continue
+            if row.get("domain") != "chartmetric" or row.get("type") != "score":
+                continue
+            data = row.get("data") or []
+            if not isinstance(data, list) or not data:
+                continue
+            first = data[0] or {}
+            if not isinstance(first, dict):
+                continue
+            value = first.get("value")
+            if value is None:
+                continue
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return value
+
+        return None
 
     #def get_track_stats(self, track_id):
     #    path = f'track/{track_id}/{type}/charts'

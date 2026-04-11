@@ -3,7 +3,19 @@ from django.apps import apps
 from celery.utils.log import get_task_logger
 from django.utils import timezone
 from chartmetric.engine import Chartmetric
+from chartmetric.dummy import (
+    DEFAULT_TRACK_VIRALITY,
+    DEFAULT_CHARTMETRIC_INSTAGRAM_DEMOGRAPHICS,
+    DEFAULT_CHARTMETRIC_INSTAGRAM_TOP_CITIES,
+    DEFAULT_CHARTMETRIC_INSTAGRAM_TOP_COUNTRIES,
+    DEFAULT_CHARTMETRIC_INSTAGRAM_SPORTS_FIT_PERCENT,
+    DEFAULT_ARTIST_INSTAGRAM_FOLLOWERS,
+    DEFAULT_ARTIST_SPOTIFY_FOLLOWERS,
+    DEFAULT_ARTIST_TIKTOK_FOLLOWERS,
+    DEFAULT_ARTIST_YOUTUBE_FOLLOWERS,
+)
 from acrylic.celery import app
+from django.conf import settings
 
 logger = get_task_logger(__name__)
 
@@ -30,6 +42,7 @@ def load_chartmetric_instagram_audience_stats(artist_id, since='2021-09-13', lim
 
     cm = Chartmetric()
     cm.authenticate()
+    use_dummy = bool(getattr(settings, "CHARTMETRIC_USE_DUMMY_FALLBACKS", False))
 
     # Chartmetric is strict about RPS; keep spacing between calls.
     updated_any = False
@@ -52,6 +65,8 @@ def load_chartmetric_instagram_audience_stats(artist_id, since='2021-09-13', lim
         )
     else:
         artist.chartmetric_instagram_top_countries = (countries_res or {}).get("obj") or []
+        if use_dummy and not artist.chartmetric_instagram_top_countries:
+            artist.chartmetric_instagram_top_countries = DEFAULT_CHARTMETRIC_INSTAGRAM_TOP_COUNTRIES
         updated_any = True
 
     time.sleep(1.5)
@@ -72,6 +87,8 @@ def load_chartmetric_instagram_audience_stats(artist_id, since='2021-09-13', lim
         )
     else:
         artist.chartmetric_instagram_top_cities = (cities_res or {}).get("obj") or []
+        if use_dummy and not artist.chartmetric_instagram_top_cities:
+            artist.chartmetric_instagram_top_cities = DEFAULT_CHARTMETRIC_INSTAGRAM_TOP_CITIES
         updated_any = True
 
     time.sleep(1.5)
@@ -93,6 +110,8 @@ def load_chartmetric_instagram_audience_stats(artist_id, since='2021-09-13', lim
         )
     else:
         artist.chartmetric_instagram_demographics = (demo_res or {}).get("obj") or []
+        if use_dummy and not artist.chartmetric_instagram_demographics:
+            artist.chartmetric_instagram_demographics = DEFAULT_CHARTMETRIC_INSTAGRAM_DEMOGRAPHICS
         updated_any = True
 
     def _sports_fit_percent_from_interests(obj_list):
@@ -152,6 +171,8 @@ def load_chartmetric_instagram_audience_stats(artist_id, since='2021-09-13', lim
     else:
         interests_obj = (interests_res or {}).get("obj") or []
         artist.chartmetric_instagram_sports_fit_percent = _sports_fit_percent_from_interests(interests_obj)
+        if use_dummy and not artist.chartmetric_instagram_sports_fit_percent:
+            artist.chartmetric_instagram_sports_fit_percent = DEFAULT_CHARTMETRIC_INSTAGRAM_SPORTS_FIT_PERCENT
         updated_any = True
 
     # Only bump the timestamp if at least one request succeeded, and avoid overwriting
@@ -265,8 +286,40 @@ def load_chartmetric_ids(track_id, force=False):
 
     track.chartmetric_id = track_data.get('id') or ''
     artist = getattr(track, 'artist', None)
-    track.save()
+    # Avoid triggering AIMS/waveform as a side-effect of enrichment.
+    track.save(skip_audio_tasks=True)
     logger.info("load_chartmetric_ids: saved track_id=%s chartmetric_id=%r", track_id, track.chartmetric_id)
+
+    # Best-effort: snapshot virality now that we have chartmetric_id.
+    # Keep this task self-contained so we don't depend on AIMS timing.
+    if track.chartmetric_id:
+        try:
+            time.sleep(1.5)
+            virality = cm.get_track_virality(track.chartmetric_id)
+            if isinstance(virality, dict) and virality.get("error"):
+                logger.warning(
+                    "load_chartmetric_ids: virality error=%r track_id=%s chartmetric_id=%r",
+                    virality.get("error"),
+                    track_id,
+                    track.chartmetric_id,
+                )
+            else:
+                if virality is None and bool(getattr(settings, "CHARTMETRIC_USE_DUMMY_FALLBACKS", False)):
+                    virality = DEFAULT_TRACK_VIRALITY
+                if virality is not None:
+                    Track.objects.filter(pk=track.pk).update(virality=virality, updated=timezone.now())
+                    logger.info(
+                        "load_chartmetric_ids: saved virality=%s track_id=%s chartmetric_id=%r",
+                        virality,
+                        track_id,
+                        track.chartmetric_id,
+                    )
+        except Exception:
+            logger.exception(
+                "load_chartmetric_ids: exception fetching virality track_id=%s chartmetric_id=%r",
+                track_id,
+                track.chartmetric_id,
+            )
 
     if artist is None:
         logger.warning("load_chartmetric_ids: track_id=%s has no artist relation", track_id)
@@ -349,6 +402,16 @@ def load_chartmetric_stats(artist_id):
         artist.youtube_url = youtube['link']
     artist.youtube_followers = _first_metric_value(youtube, 'subscribers', default=0)
 
+    # Optional dummy fallbacks for demo/dev when Chartmetric returns empty payloads.
+    if bool(getattr(settings, "CHARTMETRIC_USE_DUMMY_FALLBACKS", False)):
+        if not artist.spotify_followers:
+            artist.spotify_followers = DEFAULT_ARTIST_SPOTIFY_FOLLOWERS
+        if not artist.instagram_followers:
+            artist.instagram_followers = DEFAULT_ARTIST_INSTAGRAM_FOLLOWERS
+        if not artist.tiktok_followers:
+            artist.tiktok_followers = DEFAULT_ARTIST_TIKTOK_FOLLOWERS
+        if not artist.youtube_followers:
+            artist.youtube_followers = DEFAULT_ARTIST_YOUTUBE_FOLLOWERS
 
     artist.save()
     logger.info("load_chartmetric_stats: saved artist_id=%s", artist_id)

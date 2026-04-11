@@ -4,6 +4,7 @@ from rest_registration.api.serializers import DefaultUserProfileSerializer, Defa
 from django.contrib.auth import get_user_model
 from artist.models import Artist
 from club.models import Club
+from label.models import Label
 from account.models import Account, Document, Invitation
 
 
@@ -68,8 +69,9 @@ class RegisterSerializer(DefaultRegisterUserSerializer):
     
     def get_fields(self):
         fields = super().get_fields()
-        fields['type'] = serializers.ChoiceField(choices=['artist', 'club'])
+        fields['type'] = serializers.ChoiceField(choices=['artist', 'club', 'label'])
         fields['spotify_url'] = serializers.URLField(required=False)
+        fields['label_name'] = serializers.CharField(required=False)
         return fields
 
     def create(self, validated_data):
@@ -77,6 +79,7 @@ class RegisterSerializer(DefaultRegisterUserSerializer):
         
         user_type = data.pop('type')
         spotify_url = data.pop('spotify_url',' ')
+        label_name = data.pop('label_name', None)
                     
         
         # set email as username
@@ -91,6 +94,8 @@ class RegisterSerializer(DefaultRegisterUserSerializer):
             db_user_type = Account.UserType.ARTIST
         elif user_type=='club':
             db_user_type = Account.UserType.CLUB
+        elif user_type=='label':
+            db_user_type = Account.UserType.LABEL
         else:
             db_user_type = Account.UserType.UND
 
@@ -115,6 +120,12 @@ class RegisterSerializer(DefaultRegisterUserSerializer):
             # create related artist profile
             artist = Artist.objects.create(user=user, spotify_url=spotify_url)
 
+        if user_type == 'label':
+            Label.objects.create(
+                user=user,
+                label_name=(user.first_name),
+            )
+        
         
         return user
 

@@ -70,6 +70,7 @@ INSTALLED_APPS = [
     'spotify',
     'buyer',
     'club',
+    'label',
 ]
 
 MIDDLEWARE = [
@@ -370,10 +371,14 @@ HUBSPOT_ACCESS_TOKEN = config('HUBSPOT_ACCESS_TOKEN', default='')
 
 # Chartmetric API
 CHARTMETRIC_REFRESH_TOKEN = config('CHARTMETRIC_REFRESH_TOKEN', default='')
+# When enabled, fill Chartmetric-derived fields with dummy defaults if Chartmetric returns empty payloads.
+CHARTMETRIC_USE_DUMMY_FALLBACKS = config('CHARTMETRIC_USE_DUMMY_FALLBACKS', default=False, cast=bool)
 
 # AIMS API
 AIMS_API_SECRET = config('AIMS_API_SECRET', default='')
 AIMS_CLIENT_ID = config('AIMS_CLIENT_ID', default='')
+# If Track.released is null, we send this to AIMS as release_year.
+AIMS_DEFAULT_RELEASE_YEAR = config('AIMS_DEFAULT_RELEASE_YEAR', default=2021, cast=int)
 # Optional numeric offset to namespace AIMS id_client values per environment.
 # Example: local uses 1000000, staging uses 2000000, prod uses 0.
 AIMS_ID_OFFSET = config('AIMS_ID_OFFSET', default=0, cast=int)
@@ -383,6 +388,9 @@ AIMS_WEBHOOK_URL = config(
     'AIMS_WEBHOOK_URL',
     default='https://chimneyless-virtuously-charleen.ngrok-free.dev/aims-webhook',
 )
+# Optional shared secret for incoming AIMS webhook callbacks.
+# If set, requests must include header `X-Aims-Webhook-Secret` (or `?secret=`).
+AIMS_WEBHOOK_SECRET = config('AIMS_WEBHOOK_SECRET', default='')
 
 # Spotify API
 

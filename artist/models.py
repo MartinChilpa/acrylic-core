@@ -18,6 +18,8 @@ def get_aritst_upload_path(instance, filename):
 class Artist(BaseModel):
     # user related to artist
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='artist', blank=True, null=True)
+    # label that manages this artist (one label per artist).
+    label = models.ForeignKey('label.Label', related_name='artists', on_delete=models.PROTECT, blank=True, null=True)
     name = models.CharField(max_length=250)
     slug = models.SlugField(max_length=100, blank=True) # slug for artist URL
     isni = models.CharField('ISNI', max_length=16, blank=True) # ISNI ISO format
