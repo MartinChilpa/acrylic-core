@@ -21,11 +21,17 @@ ADMINS = [
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-i7!0w_w7d=x+h*v@n)_lr)_onr!5(la3-1wzca=6mz^_jl0^em'
-
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config('DJANGO_DEBUG', default=True, cast=bool)
+
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = config('DJANGO_SECRET_KEY', default='')
+if not SECRET_KEY:
+    if DEBUG:
+        # Dev-only fallback. Set DJANGO_SECRET_KEY in .env for anything shared.
+        SECRET_KEY = 'django-insecure-dev-only-please-set-DJANGO_SECRET_KEY-32bytes'
+    else:
+        raise RuntimeError('DJANGO_SECRET_KEY is required when DJANGO_DEBUG is false')
 
 ALLOWED_HOSTS = ['dev.platform.acrylic.la', 'platform.acrylic.la']
 
@@ -63,6 +69,8 @@ INSTALLED_APPS = [
     'chartmetric',
     'spotify',
     'buyer',
+    'club',
+    'label',
 ]
 
 MIDDLEWARE = [
@@ -213,8 +221,8 @@ EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 EMAIL_USE_TLS = True
 EMAIL_FROM = os.environ.get('EMAIL_FROM', 'noreply@acrylic.la')
 DEFAULT_FROM_EMAIL = EMAIL_FROM
-AWS_SES_REGION_NAME = os.environ.get('AWS_SES_REGION_NAME', '')
-AWS_SES_REGION_ENDPOINT = os.environ.get('AWS_SES_REGION_ENDPOINT', '')
+AWS_SES_REGION_NAME = config('AWS_SES_REGION_NAME', '')
+AWS_SES_REGION_ENDPOINT = config('AWS_SES_REGION_ENDPOINT', '')
 # server mail for errors
 SERVER_EMAIL = os.environ.get('SERVER_EMAIL', '')
 
@@ -228,14 +236,14 @@ STORAGES = {
     },
 }
 
-AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', default='')
-AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
-AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME', '')
+AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID', default='')
+AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY', '')
+AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME', '')
 
-PUBLIC_S3_BUCKET = os.environ.get('PUBLIC_S3_BUCKET', '')
+PUBLIC_S3_BUCKET = config('PUBLIC_S3_BUCKET', '')
 
 # AWS_DEFAULT_ACL = 'private'
-AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', '')
+AWS_S3_REGION_NAME = config('AWS_S3_REGION_NAME', '')
 AWS_IS_GZIPPED = True
 AWS_S3_ENDPOINT_URL = f'https://s3.{AWS_S3_REGION_NAME}.amazonaws.com'
 AWS_S3_FILE_OVERWRITE = False
@@ -244,21 +252,32 @@ AWS_QUERYSTRING_EXPIRE = 3600 * 24 # 1 day
 
 # django-tagging
 FORCE_LOWERCASE_TAGS = True
-"""
-SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
 
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': os.environ.get('REDISCLOUD_URL', ''),
-        'TIMEOUT': 600, # 10 min
-        'KEY_PREFIX': 'cache',
-        'OPTIONS': {
-            'db': '0', # Redis DB nr. 0
+_REDIS_CACHE_URL = config('REDIS_URL', default=config('REDISCLOUD_URL', default=''))
+if _REDIS_CACHE_URL and _REDIS_CACHE_URL.startswith(('redis://', 'rediss://', 'unix://')):
+    SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': _REDIS_CACHE_URL,
+            'TIMEOUT': 600, # 10 min
+            'KEY_PREFIX': 'cache',
+            'OPTIONS': {
+                'db': '0', # Redis DB nr. 0
+            }
         }
     }
-}
-"""
+else:
+    # Local/dev fallback when Redis isn't configured.
+    SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'local-dev-cache',
+            'TIMEOUT': 600,
+        }
+    }
+
 
 REST_FRAMEWORK = {
     # YOUR SETTINGS
@@ -296,7 +315,7 @@ SPECTACULAR_SETTINGS = {
 WHITENOISE_MANIFEST_STRICT = False
 
 BASE_URL = os.environ.get('BASE_URL', 'https://platform.acrylic.la/')
-FRONTEND_BASE_URL = os.environ.get('FRONTEND_BASE_URL', 'https://app.acrylic.la/')
+FRONTEND_BASE_URL = config('FRONTEND_BASE_URL', 'https://app.acrylic.la/')
 
 REST_REGISTRATION = {
     # user profile
@@ -351,8 +370,27 @@ HUBSPOT_PORTAL_ID = config('HUBSPOT_PORTAL_ID', default='')
 HUBSPOT_ACCESS_TOKEN = config('HUBSPOT_ACCESS_TOKEN', default='')
 
 # Chartmetric API
-CHARTMETRIC_REFRESH_TOKEN = config('CHARTMETRIC_REFRESH_TOKEN', default='sZBgq3RceskBkFnjc8YNDm0LUJ7swpuqk6NL4CyEYnlkL5NVpFx2WU8cGwAD7XlZ')
-# jeremy: O7gYTjDXBHdLeHEcHH5WVBTFFDrJpPeev6HCjk5LHZ8sBCJFhYfIWmCDGxIU64OS
+CHARTMETRIC_REFRESH_TOKEN = config('CHARTMETRIC_REFRESH_TOKEN', default='')
+# When enabled, fill Chartmetric-derived fields with dummy defaults if Chartmetric returns empty payloads.
+CHARTMETRIC_USE_DUMMY_FALLBACKS = config('CHARTMETRIC_USE_DUMMY_FALLBACKS', default=False, cast=bool)
+
+# AIMS API
+AIMS_API_SECRET = config('AIMS_API_SECRET', default='')
+AIMS_CLIENT_ID = config('AIMS_CLIENT_ID', default='')
+# If Track.released is null, we send this to AIMS as release_year.
+AIMS_DEFAULT_RELEASE_YEAR = config('AIMS_DEFAULT_RELEASE_YEAR', default=2021, cast=int)
+# Optional numeric offset to namespace AIMS id_client values per environment.
+# Example: local uses 1000000, staging uses 2000000, prod uses 0.
+AIMS_ID_OFFSET = config('AIMS_ID_OFFSET', default=0, cast=int)
+# Webhook URL AIMS will call once it finishes processing an uploaded track.
+# Override in environment; default is a dev placeholder.
+AIMS_WEBHOOK_URL = config(
+    'AIMS_WEBHOOK_URL',
+    default='https://chimneyless-virtuously-charleen.ngrok-free.dev/aims-webhook',
+)
+# Optional shared secret for incoming AIMS webhook callbacks.
+# If set, requests must include header `X-Aims-Webhook-Secret` (or `?secret=`).
+AIMS_WEBHOOK_SECRET = config('AIMS_WEBHOOK_SECRET', default='')
 
 # Spotify API
 

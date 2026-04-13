@@ -11,35 +11,36 @@ def load_spotify_artist_data(artist_id):
     Artist = apps.get_model('artist', 'Artist')
     try:
         artist = Artist.objects.get(id=artist_id)
-    except Track.DoesNotExist:
-        pass
-    else:
-        if artist.spotify_url:
-            # Extract artist ID from URI if provided
-            if 'spotify:artist:' in artist.spotify_url:
-                artist_id = artist.spotify_url.split('spotify:artist:')[1]
-            else:
-                # If URL is provided, extract artist ID from the URL
-                artist_id = artist.spotify_url.split('?')[0].split('/')[-1]
-            
-            spotify = spotify_client()
-            artist_data = spotify.artist(artist_id)
-            spotify_id = artist_data['id']
-            artist_name = artist_data['name']
-            #bio = artist_data.get('biography', artist_data.get('description', ''))
-            images = artist_data.get('images', [])
-            image_url = images[0]['url'] if images else None
+    except Artist.DoesNotExist:
+        return False
 
-            artist.spotify_id = spotify_id
-            artist.name = artist_name
-            #artist.bio = bio
-            if image_url and not artist.image:
-                # update artist image
-                image_file = requests.get(image_url)
-                artist.image.save('profile.jpg', ContentFile(image_file.content))
-            
-            # save artist
-            artist.save()
+    if artist.spotify_url:
+        # Extract artist ID from URI if provided
+        if 'spotify:artist:' in artist.spotify_url:
+            artist_id = artist.spotify_url.split('spotify:artist:')[1]
+        else:
+            # If URL is provided, extract artist ID from the URL
+            artist_id = artist.spotify_url.split('?')[0].split('/')[-1]
+
+        spotify = spotify_client()
+        artist_data = spotify.artist(artist_id)
+        spotify_id = artist_data['id']
+        artist_name = artist_data['name']
+        #bio = artist_data.get('biography', artist_data.get('description', ''))
+        images = artist_data.get('images', [])
+        image_url = images[0]['url'] if images else None
+
+        artist.spotify_id = spotify_id
+        artist.name = artist_name
+        #artist.bio = bio
+        if image_url and not artist.image:
+            # update artist image
+            image_file = requests.get(image_url)
+            artist.image.save('profile.jpg', ContentFile(image_file.content))
+
+        # save artist
+        artist.save()
+
     return True
 
 @app.task 
@@ -48,7 +49,10 @@ def load_spotify_id(track_id, force=False, load_data=False):
     try:
         track = Track.objects.get(id=track_id)
     except Track.DoesNotExist:
-        pass
+        # This can happen if the task was enqueued before the DB transaction committed,
+        # or if the worker is pointing at a different database.
+        print(f'Track {track_id} not found')
+        return False
     else:
         if force == True or track.spotify_id == '':
             spotify = spotify_client()
@@ -57,6 +61,8 @@ def load_spotify_id(track_id, force=False, load_data=False):
             if len(tracks) > 0:
                 # first track where ISRC matches
                 track.spotify_id = tracks[0]['id']
+                
+                
                 print(f'Track Spotify ID: {track.spotify_id}')
                 if not track.artist.spotify_id:
                     artist = track.artist        
@@ -65,7 +71,8 @@ def load_spotify_id(track_id, force=False, load_data=False):
                     print(f'Artist Spotify ID: {artist.spotify_id}')
             else:
                 print(f'{track.name}, {track.artist.name} - ISRC {track.isrc} No track ID found')
-            track.save()
+            # Avoid triggering AIMS/waveform as a side-effect of enrichment.
+            track.save(skip_audio_tasks=True)
 
         if load_data:
             # call load data
@@ -90,18 +97,20 @@ def load_spotify_track_data(track_id, force=False):
             album_images = track_info['album']['images']
 
             # load name
-            if force or not track.name:
-                track.name = track_info['name']
+            spotify_name = (track_info.get('name') or '').strip()
+            if spotify_name and (force or (track.name or '').strip() != spotify_name):
+                track.name = spotify_name
 
             # load cover art
             if force or not track.cover_image:
                 try:
                     image_url = track_info['album']['images'][0]['url']
-                except KeyError:
+                except (KeyError, IndexError, TypeError):
                     image_url = ''
                 else:
-                    image_file = requests.get(image_url)
-                    track.cover_image.save('cover.jpg', ContentFile(image_file.content))
+                    if image_url:
+                        image_file = requests.get(image_url)
+                        track.cover_image.save('cover.jpg', ContentFile(image_file.content))
 
             # load 30 sec preview mp3
             if force or not track.snippet and track_info.get('preview_url', None):
@@ -109,7 +118,8 @@ def load_spotify_track_data(track_id, force=False):
                 track.snippet.save('snippet.mp3', ContentFile(snippet_file.content))
             
             # save track
-            track.save()
+            # Avoid triggering AIMS/waveform as a side-effect of enrichment.
+            track.save(skip_audio_tasks=True)
 
 
 @app.task

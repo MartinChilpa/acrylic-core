@@ -3,6 +3,9 @@ from django.urls import include, path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView, TokenVerifyView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework import routers
+from rest_framework.authentication import BasicAuthentication
+from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_registration.api import views as registration_views
 API_VERSION = 'v1'
 
@@ -14,6 +17,9 @@ from content import views as content_views
 from legal import views as legal_views
 from legal import webhooks as legal_webhooks
 from spotify import views as spotify_views
+from aims import views as aims_views
+from aims import webhooks as aims_webhooks
+from label import views as label_views
 
 
 router = routers.DefaultRouter()
@@ -43,6 +49,11 @@ router.register('my-artist/tracks', catalog_views.MyTrackViewSet)
 router.register('my-artist/synclists', catalog_views.MySyncListViewSet)
 router.register('my-artist/split-sheets', legal_views.MySplitSheetViewSet)
 router.register('my-artist/prices', catalog_views.MyPriceViewSet)
+
+# aims
+router.register('aims/similarity',aims_views.SimilarityViewSet,  basename='aims-similarity')
+router.register('aims/similarity-prompt', aims_views.SimilarityPromptViewSet, basename='aims-similarity-prompt')
+router.register('aims/similarity-video', aims_views.SimilarityVideoViewSet, basename='aims-similarity-video')
 
 
 # buyer account
@@ -99,6 +110,20 @@ urlpatterns = [
         # Application
         path('', include(router.urls)),
 
+        # Ingestion (CSV preview)
+        path('ingestion/upload_csv/', label_views.UploadCsvPreviewView.as_view(), name='upload_csv_preview'),
+        path('ingestion/save_artists/', label_views.SaveArtistsView.as_view(), name='save_artists'),
+        # Ingestion (bulk track upload for labels)
+        path(
+            'ingestion/save_tracks/',
+            catalog_views.TrackViewSet.as_view(
+                {'post': 'save_to_s3_bulk'},
+                authentication_classes=[BasicAuthentication, JWTAuthentication],
+                permission_classes=[IsAuthenticated],
+            ),
+            name='save_tracks',
+        ),
+
         
         # Accounts
         #path('account/profile/', profile, name='profile'),
@@ -108,11 +133,12 @@ urlpatterns = [
 
     # Dropbox Sign
     path(f'legal/webhooks/signwell/', legal_webhooks.signwell_webhook, name='sign_webhook'),
+    # AIMS webhooks (track processing)
+    path('aims-webhook', aims_webhooks.AimsWebhookView.as_view(), name='aims_webhook_no_slash'),
+    path('aims-webhook/', aims_webhooks.AimsWebhookView.as_view(), name='aims_webhook'),
 
 ]
 
 
 #router = routers.SimpleRouter()
 #router.register(f'api/{API_VERSION}/library/category', library_views.CategoryViewSet, basename='category')
-
-

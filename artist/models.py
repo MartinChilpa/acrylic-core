@@ -18,6 +18,8 @@ def get_aritst_upload_path(instance, filename):
 class Artist(BaseModel):
     # user related to artist
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='artist', blank=True, null=True)
+    # label that manages this artist (one label per artist).
+    label = models.ForeignKey('label.Label', related_name='artists', on_delete=models.PROTECT, blank=True, null=True)
     name = models.CharField(max_length=250)
     slug = models.SlugField(max_length=100, blank=True) # slug for artist URL
     isni = models.CharField('ISNI', max_length=16, blank=True) # ISNI ISO format
@@ -61,8 +63,18 @@ class Artist(BaseModel):
 
     instagram_followers = models.PositiveIntegerField(default=0, editable=False)
 
+    # Chartmetric: Instagram audience snapshots (shape can change, store raw-ish JSON).
+    chartmetric_instagram_top_countries = models.JSONField(null=True, blank=True)
+    chartmetric_instagram_top_cities = models.JSONField(null=True, blank=True)
+    chartmetric_instagram_demographics = models.JSONField(null=True, blank=True)
+    # Derived metric: sum of selected interest weights * 100 (Sports + related interests).
+    chartmetric_instagram_sports_fit_percent = models.FloatField(default=0, editable=False)
+    chartmetric_instagram_audience_updated_at = models.DateTimeField(null=True, blank=True, editable=False)
+
     tiktok_followers = models.PositiveIntegerField(default=0, editable=False)
     tiktok_likes = models.PositiveIntegerField(default=0, editable=False)
+
+    youtube_followers = models.PositiveIntegerField(default=0, editable=False)
     
     # youtube_subscribers = models.PositiveIntegerField(default=0) 
     # soundcloud_followers = models.PositiveIntegerField(default=0) 

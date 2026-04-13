@@ -89,11 +89,11 @@ class MyArtistViewSet(viewsets.GenericViewSet):
         instance = self.get_object()
         
         if request.method == 'GET':
-            serializer = ArtistSerializer(instance)
+            serializer = ArtistSerializer(instance, context={'request': request})
             return Response(serializer.data)
         
         elif request.method == 'PUT':
-            serializer = ArtistUpdateSerializer(instance, data=request.data)
+            serializer = ArtistUpdateSerializer(instance, data=request.data, context={'request': request})
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data)

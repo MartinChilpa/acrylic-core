@@ -1,9 +1,14 @@
 import requests
 import json
+import logging
+import time
+from urllib.parse import urlencode
 from django.conf import settings
 
 
 API_BASE_URL = 'https://api.chartmetric.com/api/'
+
+logger = logging.getLogger(__name__)
 
 
 class Chartmetric():
@@ -13,7 +18,7 @@ class Chartmetric():
     def __init__(self, refresh_token=None):
        self.refresh_token = refresh_token or settings.CHARTMETRIC_REFRESH_TOKEN
 
-    def _request(self, method, path, data=None):
+    def _request(self, method, path, data=None, timeout=None):
         url = f'{API_BASE_URL}{path}'
         headers = {
             'Content-Type': 'application/json'
@@ -21,11 +26,46 @@ class Chartmetric():
         if self.auth_token:
             headers['Authorization'] = f'Bearer {self.auth_token}'
 
-        if data:
-            data = json.dumps(data)
-        response = getattr(requests, method)(url, data, headers=headers)
-        response_data = response.json()
-        print(response_data)
+        body = json.dumps(data) if data is not None else None
+        # Allow overriding request timeout from Django settings.
+        # When unset, default to 60s read timeout to accommodate heavier endpoints.
+        effective_timeout = timeout
+        if effective_timeout is None:
+            effective_timeout = getattr(settings, "CHARTMETRIC_REQUEST_TIMEOUT", 60)
+        # Use (connect, read) timeouts to fail fast on network issues but allow slow responses.
+        if isinstance(effective_timeout, (int, float)):
+            effective_timeout = (10, effective_timeout)
+
+        try:
+            response = requests.request(method, url, headers=headers, data=body, timeout=effective_timeout)
+        except requests.exceptions.Timeout as exc:
+            return {
+                "error": "timeout",
+                "detail": str(exc),
+            }
+        except requests.exceptions.RequestException as exc:
+            return {
+                "error": "request_exception",
+                "detail": str(exc),
+            }
+        try:
+            response_data = response.json()
+        except ValueError:
+            # Chartmetric can occasionally return non-JSON (e.g. HTML errors, empty body).
+            return {
+                "error": "non_json_response",
+                "status_code": response.status_code,
+                "text": response.text[:500],
+            }
+        if response.status_code >= 400:
+            # Keep the parsed body around (Chartmetric often returns JSON errors),
+            # but normalize into a consistent error envelope.
+            return {
+                "error": "http_error",
+                "status_code": response.status_code,
+                "body": response_data,
+            }
+        # Avoid printing potentially sensitive payloads (tokens, ids) into Celery logs.
         return response_data
 
     def authenticate(self):
@@ -34,8 +74,12 @@ class Chartmetric():
         }
         response = self._request('post', 'token', data)
         # POST request to get the access token
-        self.auth_token = response['token']
-        print(self.auth_token)
+        if isinstance(response, dict) and response.get("token"):
+            self.auth_token = response["token"]
+            logger.info("Chartmetric authenticated (token received).")
+            return True
+        logger.warning("Chartmetric auth failed: %r", response)
+        return False
 
     def get_track_artist_ids_from_isrc(self, isrc):
         path = f'search?q={isrc}&type=tracks&limit=1'
@@ -45,12 +89,62 @@ class Chartmetric():
         path = f'search?q={spotify_id}&type=artists&limit=1'
         return self._request('get', path)
 
+    def get_track_chartmetric_stats_most_history(self, track_id):
+        """
+        Wrapper for:
+        /api/track/{id}/chartmetric/stats/most-history
+
+        Returns the raw API response dict, typically:
+        {"obj": [{"domain": "chartmetric", "type": "score", "data": [...]}, ...]}
+        """
+        path = f"track/{track_id}/chartmetric/stats/most-history"
+        return self._request("get", path)
+
+    def get_track_virality(self, track_id):
+        """
+        Returns a single numeric value (track_virality) extracted from:
+        /api/track/{id}/chartmetric/stats/most-history
+
+        Specifically: the first available `value` from the first matching obj row
+        (domain=chartmetric, type=score), taking row["data"][0]["value"].
+
+        On error, returns the raw error dict from _request().
+        """
+        res = self.get_track_chartmetric_stats_most_history(track_id)
+        if not isinstance(res, dict) or res.get("error"):
+            return res
+
+        obj = res.get("obj") or []
+        if not isinstance(obj, list):
+            obj = []
+
+        for row in obj:
+            if not isinstance(row, dict):
+                continue
+            if row.get("domain") != "chartmetric" or row.get("type") != "score":
+                continue
+            data = row.get("data") or []
+            if not isinstance(data, list) or not data:
+                continue
+            first = data[0] or {}
+            if not isinstance(first, dict):
+                continue
+            value = first.get("value")
+            if value is None:
+                continue
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return value
+
+        return None
+
     #def get_track_stats(self, track_id):
     #    path = f'track/{track_id}/{type}/charts'
     #    print(f'GET {path}')
     #    data[source] = self._request('get', path)['obj']
 
-    def get_artist_stats(self, artist_id, sources=['instagram', 'spotify']):
+    def get_artist_stats(self, artist_id, sources=None, sleep_seconds=1.5):
         # https://api.chartmetric.com/api/artist/439/stat/spotify
 
         """
@@ -69,16 +163,98 @@ class Chartmetric():
         #    'wikipedia', 'bandsintown', 'soundcloud', 'tiktok', 'twitch'
         #]
         """
-        print(sources)
+        sources = sources or ['instagram', 'spotify', 'tiktok', 'youtube_channel']
+
         data = {}
-        for source in sources:
+        for idx, source in enumerate(sources):
+            # Chartmetric is strict about RPS. Without throttling, some sources
+            # can randomly come back empty/errored (429) while others succeed.
+            if idx and sleep_seconds:
+                time.sleep(sleep_seconds)
             path = f'artist/{artist_id}/stat/{source}?latest=true'
-            print(f'GET {path}')
-            data[source] = self._request('get', path)['obj']
+            res = self._request('get', path)
+            data[source] = res.get('obj') if isinstance(res, dict) else None
         return data
 
     def get_artist_ids(self, artist_id):
         return self._request('get', f'artist/chartmetric/{artist_id}/get-ids')
+
+    def get_social_audience_stats(
+        self,
+        artist_id,
+        *,
+        domain='instagram',
+        audience_type='followers',
+        stats_type='country',
+        since='2021-09-13',
+        until=None,
+        limit=3,
+    ):
+        """
+        Wrapper for:
+        /api/artist/{id}/social-audience-stats?domain=instagram&audienceType=followers&statsType=country&since=YYYY-MM-DD&limit=3
+
+        Returns the raw API response dict.
+        """
+        params = {
+            'domain': domain,
+            'audienceType': audience_type,
+            'statsType': stats_type,
+        }
+        if since:
+            params['since'] = since
+        if until:
+            params['until'] = until
+        if limit is not None:
+            params['limit'] = int(limit)
+
+        path = f"artist/{artist_id}/social-audience-stats?{urlencode(params)}"
+        return self._request('get', path)
+
+    def get_top_countries_instagram(self, artist_id, *, since='2021-09-13', limit=3):
+        """
+        Returns list of dicts: [{"name": ..., "code2": ..., "weights": ...}, ...]
+        """
+        res = self.get_social_audience_stats(
+            artist_id,
+            domain='instagram',
+            audience_type='followers',
+            stats_type='country',
+            since=since,
+            limit=limit,
+        )
+        obj = (res or {}).get('obj') if isinstance(res, dict) else None
+        return obj or []
+
+    def get_top_cities_instagram(self, artist_id, *, since='2021-09-13', limit=3):
+        """
+        Returns list of dicts: [{"city_name": ..., "code2": ..., "weights": ...}, ...]
+        """
+        res = self.get_social_audience_stats(
+            artist_id,
+            domain='instagram',
+            audience_type='followers',
+            stats_type='city',
+            since=since,
+            limit=limit,
+        )
+        obj = (res or {}).get('obj') if isinstance(res, dict) else None
+        return obj or []
+
+    def get_demographics_instagram(self, artist_id, *, since='2021-09-13', limit=1):
+        """
+        Returns the raw obj for statsType=demographic (usually a list with one dict).
+        """
+        res = self.get_social_audience_stats(
+            artist_id,
+            domain='instagram',
+            audience_type='followers',
+            stats_type='demographic',
+            since=since,
+            limit=limit,
+        )
+        obj = (res or {}).get('obj') if isinstance(res, dict) else None
+        return obj or []
     
         #        "artist_name": "Hailee Steinfeld",
         #        "spotify_artist_id": "5p7f24Rk5HkUZsaS3BLG5F",

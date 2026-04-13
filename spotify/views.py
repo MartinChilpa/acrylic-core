@@ -12,7 +12,7 @@ class TrackPreviewViewSet(ViewSet):
         spotify = spotify_client()
         results = spotify.search(q=f'isrc:{isrc}', type='track')
 
-        print(results)
+        #print(results)
 
         tracks = [t for t in results['tracks']['items'] if t['external_ids']['isrc'] == isrc]
         if len(tracks) > 0:
