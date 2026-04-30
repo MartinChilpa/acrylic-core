@@ -12,6 +12,9 @@ class Club(BaseModel):
     
     # Campos básicos solicitados
     club_name = models.CharField(max_length=150, verbose_name="Nombre del Club")
+
+    # ISO-3166 alpha-2 country code (e.g. "US", "MX")
+    country = CountryField(max_length=2, blank=True)
     
     stadium_name = models.CharField(max_length=150, blank=True, verbose_name="Estadio")
     portal_web = models.URLField(max_length=255, blank=True, verbose_name="Sitio Web")
