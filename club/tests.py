@@ -32,6 +32,7 @@ class TeamConfigEndpointTests(APITestCase):
             response.json(),
             {
                 "slug": "cfmontreal",
+                "country_code2": None,
                 "team_name": "CF Montréal",
                 "tagline": "Tous ensemble, droit devant",
                 "colors": {"primary": "#003DA6", "secondary": "#FFFFFF"},

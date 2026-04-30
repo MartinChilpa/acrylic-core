@@ -19,6 +19,7 @@ class ClubAdmin(admin.ModelAdmin):
     fields = [
         'user',
         'club_name',
+        'country',
         'slug',
         'stadium_name',
         'portal_web',
