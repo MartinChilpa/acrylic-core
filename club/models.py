@@ -3,6 +3,7 @@ from django.db import models
 from common.models import BaseModel
 from django.utils.text import slugify
 from django.db.models import Q
+from django_countries.fields import CountryField
 
 # Create your models here.
 class Club(BaseModel):
@@ -17,7 +18,14 @@ class Club(BaseModel):
     
     # Campo extra para el dashboard (slug único para la URL del portal)
     slug = models.SlugField(max_length=100, blank=True)
-    
+
+    # Team/Club UI config (for frontend theming)
+    team_name = models.CharField(max_length=150, blank=True, default="")
+    tagline = models.CharField(max_length=250, blank=True, default="")
+    colors = models.JSONField(null=True, blank=True, default=dict)
+    auth_promo = models.JSONField(null=True, blank=True, default=dict)
+    sidenav = models.JSONField(null=True, blank=True, default=dict)
+
     # Estado operativo
     is_active = models.BooleanField(default=True)
 
@@ -36,15 +44,29 @@ class Club(BaseModel):
         return self.club_name
     
     def save(self, *args, **kwargs):
-        # Generar slug si está presente (siguiendo tu lógica de 'if self.slug')
-        if self.slug:
-            slug = slugify(self.club_name)
-            # Buscamos cuántos clubes tienen ya ese slug (excluyendo el actual)
+        # Auto-generate slug if missing.
+        if not self.slug:
+            base = slugify(self.club_name)
+            slug = base
             same_slug_clubs = Club.objects.filter(slug=slug).exclude(uuid=self.uuid).count()
-            
             if same_slug_clubs > 0:
-                slug = f'{slug}{same_slug_clubs + 1}'
-            
+                slug = f"{base}{same_slug_clubs + 1}"
             self.slug = slug
             
         super(Club, self).save(*args, **kwargs)
+
+
+class Player(BaseModel):
+    club = models.ForeignKey(Club, related_name="players", on_delete=models.CASCADE)
+    name = models.CharField(max_length=250)
+    nationality = CountryField(max_length=2)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["name"]
+        indexes = BaseModel.Meta.indexes + [
+            models.Index(fields=["club", "name"]),
+        ]
+
+    def __str__(self) -> str:
+        return self.name
