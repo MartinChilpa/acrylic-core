@@ -20,6 +20,7 @@ from spotify import views as spotify_views
 from aims import views as aims_views
 from aims import webhooks as aims_webhooks
 from label import views as label_views
+from club import views as club_views
 
 
 router = routers.DefaultRouter()
@@ -35,6 +36,7 @@ router.register('distributors', catalog_views.DistributorViewSet)
 router.register('synclists', catalog_views.SyncListViewSet)
 router.register('prices', catalog_views.PriceViewSet)
 router.register('articles', content_views.ArticleViewSet)
+router.register('teams', club_views.TeamViewSet, basename='teams')
 
 # spotify views
 router.register('spotify/track/preview', spotify_views.TrackPreviewViewSet, basename='simple')

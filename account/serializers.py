@@ -56,14 +56,10 @@ class RegisterSerializer(DefaultRegisterUserSerializer):
         if User.objects.filter(email=email).exists():
             raise serializers.ValidationError({'email': 'User with this email already exists'})
 
-        # 2. VALIDACIÓN CONDICIONAL: 
-        # Solo pedimos invitación si el tipo es 'artist'. 
-        # Los 'club' pasan directo sin invitación.
-        if user_type == 'artist':
-            if not Invitation.objects.filter(email=email).exists():
-                raise serializers.ValidationError({
-                    'email': 'Artists must have an invitation to register.'
-                })
+        if not Invitation.objects.filter(email=email).exists():
+            raise serializers.ValidationError({
+                'email': 'Artists must have an invitation to register.'
+            })
         return attrs
 
     

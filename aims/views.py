@@ -421,6 +421,7 @@ def _simplify_aims_item(item, *, debug_moods=False):
     instagram_followers = 0
     youtube_followers = 0
     tiktok_followers = 0
+    artist_country_code2 = None
     chartmetric_instagram_demographics = None
     chartmetric_instagram_top_cities = None
     chartmetric_instagram_top_countries = None
@@ -446,6 +447,7 @@ def _simplify_aims_item(item, *, debug_moods=False):
                 "price_id",
                 "price__uuid",
                 "artist__name",
+                "artist__country",
                 "artist__spotify_followers",
                 "artist__instagram_followers",
                 "artist__youtube_followers",
@@ -486,6 +488,8 @@ def _simplify_aims_item(item, *, debug_moods=False):
         if track and getattr(track, "artist", None) and track.artist:
             if track.artist.name:
                 artist_canonical = track.artist.name
+            if getattr(track.artist, "country", None):
+                artist_country_code2 = str(track.artist.country)
 
             spotify_followers = getattr(track.artist, "spotify_followers", 0) or 0
             instagram_followers = getattr(track.artist, "instagram_followers", 0) or 0
@@ -526,6 +530,7 @@ def _simplify_aims_item(item, *, debug_moods=False):
         "track_uuid": track_uuid,
         "track_name": _as_str(track_name),
         "artist_canonical": _as_str(artist_canonical),
+        "artist_country_code2": artist_country_code2,
         "match_score": match_score,
         "duration": duration,
         "release_year": release_year,
