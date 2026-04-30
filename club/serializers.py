@@ -9,11 +9,13 @@ class TeamConfigSerializer(serializers.ModelSerializer):
     colors = serializers.SerializerMethodField()
     auth_promo = serializers.SerializerMethodField()
     sidenav = serializers.SerializerMethodField()
+    country_code2 = serializers.SerializerMethodField()
 
     class Meta:
         model = Club
         fields = (
             "slug",
+            "country_code2",
             "team_name",
             "tagline",
             "colors",
@@ -35,6 +37,11 @@ class TeamConfigSerializer(serializers.ModelSerializer):
 
     def get_sidenav(self, obj: Club) -> dict:
         return obj.sidenav or {}
+
+    def get_country_code2(self, obj: Club):
+        if not getattr(obj, "country", None):
+            return None
+        return str(obj.country)
 
 
 class TeamPlayerSerializer(serializers.ModelSerializer):
