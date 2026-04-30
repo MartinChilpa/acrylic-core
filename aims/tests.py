@@ -80,7 +80,7 @@ class AimsSimplifyTests(TestCase):
             patch("artist.signals.load_spotify_artist_data", return_value=True),
             patch("artist.signals.request_contract_signature_task.delay", return_value=None),
         ):
-            artist = Artist.objects.create(name="Some Artist")
+            artist = Artist.objects.create(name="Some Artist", country="AR")
 
         with (
             patch("catalog.models.load_spotify_id.delay", return_value=None),
@@ -95,6 +95,7 @@ class AimsSimplifyTests(TestCase):
 
         out = _simplify_aims_item({"id_client": track.aims_id, "track_name": "X", "artist_canonical": "Y"})
         self.assertEqual(out["track_virality"], 98.7)
+        self.assertEqual(out["artist_country_code2"], "AR")
 
     def test_simplify_includes_track_price(self):
         from aims.views import _simplify_aims_item
@@ -170,7 +171,7 @@ class AimsSpotifySchemaTests(TestCase):
             patch("artist.signals.load_spotify_artist_data", return_value=True),
             patch("artist.signals.request_contract_signature_task.delay", return_value=None),
         ):
-            artist = Artist.objects.create(name="Vicente Fernández", chartmetric_instagram_sports_fit_percent=47.1)
+            artist = Artist.objects.create(name="Vicente Fernández", country="MX", chartmetric_instagram_sports_fit_percent=47.1)
 
         price = Price.objects.create(name="P1", description="", max_artist_tracks=0, default=False, active=True, order=0)
 
@@ -235,7 +236,9 @@ class AimsSpotifySchemaTests(TestCase):
         # Seed track includes the same fields as results items.
         self.assertIn("spotify_followers", payload["seed_track"]["track"])
         self.assertIn("chartmetric_instagram_top_countries", payload["seed_track"]["track"])
+        self.assertEqual(payload["seed_track"]["track"]["artist_country_code2"], "MX")
 
         self.assertEqual(payload["count"], 1)
         self.assertEqual(payload["results"][0]["track_id"], match_track.id)
         self.assertAlmostEqual(payload["results"][0]["match_score"], 0.93, places=2)
+        self.assertEqual(payload["results"][0]["artist_country_code2"], "MX")

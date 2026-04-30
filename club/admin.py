@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Club
+from .models import Club, Player
 
 @admin.register(Club)
 class ClubAdmin(admin.ModelAdmin):
@@ -16,5 +16,24 @@ class ClubAdmin(admin.ModelAdmin):
     raw_id_fields = ['user']
 
     # IMPORTANTE: Aquí definimos qué campos aparecen en el formulario de "Add Club"
-    # Quitamos 'slug' de aquí para que NO aparezca al llenar los datos
-    fields = ['user', 'club_name', 'stadium_name', 'portal_web', 'is_active']
+    fields = [
+        'user',
+        'club_name',
+        'slug',
+        'stadium_name',
+        'portal_web',
+        'team_name',
+        'tagline',
+        'colors',
+        'auth_promo',
+        'sidenav',
+        'is_active',
+    ]
+
+
+@admin.register(Player)
+class PlayerAdmin(admin.ModelAdmin):
+    list_display = ["name", "club", "nationality", "is_active"]
+    search_fields = ["name", "club__club_name"]
+    list_filter = ["club", "nationality", "is_active"]
+    raw_id_fields = ["club"]
