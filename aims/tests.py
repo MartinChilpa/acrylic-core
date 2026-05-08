@@ -242,3 +242,74 @@ class AimsSpotifySchemaTests(TestCase):
         self.assertEqual(payload["results"][0]["track_id"], match_track.id)
         self.assertAlmostEqual(payload["results"][0]["match_score"], 0.93, places=2)
         self.assertEqual(payload["results"][0]["artist_country_code2"], "MX")
+
+
+class AimsDownloadUrlTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        User = get_user_model()
+        self.user = User.objects.create_user(username="u_download", password="p")
+        self.client.force_authenticate(user=self.user)
+
+        with (
+            patch("artist.signals.load_spotify_artist_data", return_value=True),
+            patch("artist.signals.request_contract_signature_task.delay", return_value=None),
+        ):
+            self.artist = Artist.objects.create(name="Some Artist", user=self.user)
+
+    def _create_track(self, key: str):
+        with (
+            patch("catalog.models.load_spotify_id.delay", return_value=None),
+            patch("catalog.models.load_chartmetric_ids.delay", return_value=None),
+        ):
+            return Track.objects.create(
+                artist=self.artist,
+                isrc="USEE10001998",
+                name="Track",
+                file_mp3=key,
+            )
+
+    def test_download_url_requires_auth(self):
+        client = APIClient()
+        res = client.post("/api/v1/aims/download-url/", {"key": "tracks/x.mp3", "filename": "x.mp3"}, format="json")
+        self.assertEqual(res.status_code, 401)
+
+    @override_settings(AWS_STORAGE_BUCKET_NAME="bucket", AWS_S3_REGION_NAME="us-east-1")
+    @patch("aims.views.boto3.client")
+    def test_download_url_returns_presigned(self, mock_client):
+        key = "tracks/acrylic/test/file.mp3"
+        self._create_track(key)
+
+        s3 = mock_client.return_value
+        s3.generate_presigned_url.return_value = "https://presigned.example/test"
+
+        res = self.client.post(
+            "/api/v1/aims/download-url/",
+            {"key": key, "filename": "Artist - Track.mp3"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()["url"], "https://presigned.example/test")
+
+        mock_client.assert_called()
+        args, kwargs = s3.generate_presigned_url.call_args
+        self.assertEqual(args[0], "get_object")
+        params = kwargs.get("Params") or {}
+        self.assertEqual(params.get("Bucket"), "bucket")
+        self.assertEqual(params.get("Key"), key)
+        self.assertIn("attachment", params.get("ResponseContentDisposition", ""))
+
+    @override_settings(AWS_STORAGE_BUCKET_NAME="bucket")
+    @patch("aims.views.boto3.client")
+    def test_download_url_allows_any_key_when_authenticated(self, mock_client):
+        s3 = mock_client.return_value
+        s3.generate_presigned_url.return_value = "https://presigned.example/any"
+
+        key = "tracks/other-artist/file.mp3"
+        res = self.client.post(
+            "/api/v1/aims/download-url/",
+            {"key": key, "filename": "Other.mp3"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()["url"], "https://presigned.example/any")

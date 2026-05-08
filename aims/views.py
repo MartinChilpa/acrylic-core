@@ -3,13 +3,19 @@ import logging
 import copy
 import time
 import re
+from urllib.parse import quote, unquote, urlparse
 from django.conf import settings
 
 from rest_framework.viewsets import ViewSet
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework import serializers
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
+
+import boto3
 
 from catalog.models import Track
 from spotify.engine import spotify_client
@@ -49,6 +55,107 @@ def _extract_spotify_track_id(value):
     if re.fullmatch(r"[A-Za-z0-9]{10,40}", v):
         return v
     return None
+
+
+def _extract_s3_key_from_url(url: str) -> str | None:
+    """
+    Best-effort extraction of an object key from a URL (presigned or public).
+
+    We intentionally keep this conservative: only the URL path is used.
+    """
+    if not isinstance(url, str):
+        return None
+    raw = url.strip()
+    if not raw:
+        return None
+    try:
+        parsed = urlparse(raw)
+    except Exception:
+        return None
+    path = (parsed.path or "").strip()
+    if not path:
+        return None
+    key = unquote(path.lstrip("/"))
+    return key or None
+
+
+def _sanitize_attachment_filename(filename: str) -> str:
+    """
+    Sanitize a user-provided filename so it is safe to embed in a
+    Content-Disposition header.
+    """
+    name = (filename or "").strip()
+    name = name.replace("\r", "").replace("\n", "")
+    name = name.split("/")[-1].split("\\")[-1].strip()
+    if not name:
+        name = "download"
+    return name[:200]
+
+
+def _build_content_disposition(filename: str) -> str:
+    safe = _sanitize_attachment_filename(filename)
+    ascii_fallback = safe.encode("ascii", "ignore").decode("ascii") or "download"
+    ascii_fallback = re.sub(r'[\x00-\x1f\x7f"]+', "_", ascii_fallback)
+    utf8_encoded = quote(safe, safe="")
+    return f'attachment; filename="{ascii_fallback}"; filename*=UTF-8\'\'{utf8_encoded}'
+
+
+def _s3_client():
+    kwargs = {}
+    region = getattr(settings, "AWS_S3_REGION_NAME", "") or None
+    if region:
+        kwargs["region_name"] = region
+    endpoint_url = getattr(settings, "AWS_S3_ENDPOINT_URL", "") or None
+    if endpoint_url:
+        kwargs["endpoint_url"] = endpoint_url
+    access_key = getattr(settings, "AWS_ACCESS_KEY_ID", "") or ""
+    secret_key = getattr(settings, "AWS_SECRET_ACCESS_KEY", "") or ""
+    if access_key and secret_key:
+        kwargs["aws_access_key_id"] = access_key
+        kwargs["aws_secret_access_key"] = secret_key
+    return boto3.client("s3", **kwargs)
+
+
+class AimsDownloadUrlInputSerializer(serializers.Serializer):
+    key = serializers.CharField(required=False, allow_blank=False, trim_whitespace=True)
+    url = serializers.CharField(required=False, allow_blank=False, trim_whitespace=True)
+    filename = serializers.CharField(required=True, allow_blank=False, trim_whitespace=True, max_length=200)
+
+    def validate(self, attrs):
+        key = attrs.get("key")
+        url = attrs.get("url")
+        if not key and not url:
+            raise serializers.ValidationError("Either 'key' or 'url' is required.")
+
+        # Accept legacy clients that pass a full URL in `key`.
+        if isinstance(key, str) and "://" in key:
+            url = key
+            key = None
+
+        if not key and url:
+            extracted = _extract_s3_key_from_url(url)
+            if not extracted:
+                raise serializers.ValidationError({"url": "Could not extract key from url."})
+            key = extracted
+
+        key = (key or "").strip().lstrip("/")
+
+        # Some URL shapes include the bucket as the first path segment:
+        #   https://s3.<region>.amazonaws.com/<bucket>/<key>
+        bucket = getattr(settings, "AWS_STORAGE_BUCKET_NAME", "") or ""
+        if bucket and key.startswith(f"{bucket}/"):
+            key = key[len(bucket) + 1 :]
+
+        if not key:
+            raise serializers.ValidationError({"key": "Invalid key."})
+        if not key.startswith("tracks/"):
+            raise serializers.ValidationError({"key": "Key must start with 'tracks/'."})
+        if ".." in key or "\x00" in key:
+            raise serializers.ValidationError({"key": "Invalid key."})
+
+        attrs["key"] = key
+        attrs["filename"] = _sanitize_attachment_filename(attrs.get("filename", ""))
+        return attrs
 
 # Useful for frontend dev/testing without calling AIMS.
 DUMMY_SIMILARITY_RESPONSE = {
@@ -910,3 +1017,49 @@ class SimilarityVideoViewSet(ViewSet):
         # Return the same simplified schema as the other similarity endpoints.
         debug_moods = request.query_params.get("debug_moods") == "1"
         return Response(_simplify_aims_payload(search_json, debug_moods=debug_moods), status=search_response.status_code)
+
+
+class AimsDownloadUrlView(APIView):
+    """
+    Authenticated endpoint to mint a presigned S3 URL for downloading a track file.
+
+    POST /api/v1/aims/download-url/
+    Body: { key?: string; url?: string; filename: string }
+    Response: { url: string }
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = AimsDownloadUrlInputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        key = serializer.validated_data["key"]
+        filename = serializer.validated_data["filename"]
+
+        bucket = getattr(settings, "AWS_STORAGE_BUCKET_NAME", "") or ""
+        if not bucket:
+            return Response({"detail": "S3 bucket not configured."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        expires = int(
+            getattr(settings, "AIMS_DOWNLOAD_URL_EXPIRE_SECONDS", 0)
+            or getattr(settings, "AWS_QUERYSTRING_EXPIRE", 0)
+            or 3600
+        )
+        expires = max(60, min(expires, 3600 * 24))
+
+        s3 = _s3_client()
+        try:
+            presigned = s3.generate_presigned_url(
+                "get_object",
+                Params={
+                    "Bucket": bucket,
+                    "Key": key,
+                    "ResponseContentDisposition": _build_content_disposition(filename),
+                },
+                ExpiresIn=expires,
+            )
+        except Exception:
+            logger.exception("Failed to generate presigned download url for key=%r", key)
+            return Response({"detail": "Could not generate download url."}, status=status.HTTP_502_BAD_GATEWAY)
+
+        return Response({"url": str(presigned)}, status=status.HTTP_200_OK)
