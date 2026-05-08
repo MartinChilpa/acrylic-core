@@ -110,6 +110,7 @@ urlpatterns = [
         
 
         # Application
+        path('aims/download-url/', aims_views.AimsDownloadUrlView.as_view(), name='aims_download_url'),
         path('', include(router.urls)),
 
         # Ingestion (CSV preview)
