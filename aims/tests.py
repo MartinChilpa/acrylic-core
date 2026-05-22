@@ -171,7 +171,12 @@ class AimsSpotifySchemaTests(TestCase):
             patch("artist.signals.load_spotify_artist_data", return_value=True),
             patch("artist.signals.request_contract_signature_task.delay", return_value=None),
         ):
-            artist = Artist.objects.create(name="Vicente Fernández", country="MX", chartmetric_instagram_sports_fit_percent=47.1)
+            artist = Artist.objects.create(
+                name="Vicente Fernández",
+                country="MX",
+                instagram_url="https://instagram.com/vicente",
+                chartmetric_instagram_sports_fit_percent=47.1,
+            )
 
         price = Price.objects.create(name="P1", description="", max_artist_tracks=0, default=False, active=True, order=0)
 
@@ -235,6 +240,7 @@ class AimsSpotifySchemaTests(TestCase):
         self.assertAlmostEqual(payload["seed_track"]["track"]["audience_sport_fit_percent"], 47.1, places=1)
         # Seed track includes the same fields as results items.
         self.assertIn("spotify_followers", payload["seed_track"]["track"])
+        self.assertEqual(payload["seed_track"]["track"]["instagram_url"], "https://instagram.com/vicente")
         self.assertIn("chartmetric_instagram_top_countries", payload["seed_track"]["track"])
         self.assertEqual(payload["seed_track"]["track"]["artist_country_code2"], "MX")
 

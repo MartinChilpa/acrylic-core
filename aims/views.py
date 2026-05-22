@@ -526,6 +526,7 @@ def _simplify_aims_item(item, *, debug_moods=False):
     cover_image = None
     spotify_followers = 0
     instagram_followers = 0
+    instagram_url = None
     youtube_followers = 0
     tiktok_followers = 0
     artist_country_code2 = None
@@ -557,6 +558,7 @@ def _simplify_aims_item(item, *, debug_moods=False):
                 "artist__country",
                 "artist__spotify_followers",
                 "artist__instagram_followers",
+                "artist__instagram_url",
                 "artist__youtube_followers",
                 "artist__tiktok_followers",
                 "artist__chartmetric_instagram_demographics",
@@ -600,6 +602,7 @@ def _simplify_aims_item(item, *, debug_moods=False):
 
             spotify_followers = getattr(track.artist, "spotify_followers", 0) or 0
             instagram_followers = getattr(track.artist, "instagram_followers", 0) or 0
+            instagram_url = getattr(track.artist, "instagram_url", None)
             youtube_followers = getattr(track.artist, "youtube_followers", 0) or 0
             tiktok_followers = getattr(track.artist, "tiktok_followers", 0) or 0
 
@@ -654,6 +657,7 @@ def _simplify_aims_item(item, *, debug_moods=False):
         "track_name_track": track_name_track,
         "spotify_followers": spotify_followers,
         "instagram_followers": instagram_followers,
+        "instagram_url": instagram_url,
         "youtube_followers": youtube_followers,
         "tiktok_followers": tiktok_followers,
         "chartmetric_instagram_demographics": chartmetric_instagram_demographics,
