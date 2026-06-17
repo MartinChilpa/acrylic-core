@@ -3,6 +3,7 @@ import logging
 import copy
 import time
 import re
+from uuid import uuid4
 from urllib.parse import quote, unquote, urlparse
 from django.conf import settings
 
@@ -940,16 +941,34 @@ class SimilarityVideoViewSet(ViewSet):
     parser_classes = (MultiPartParser, FormParser)
 
     def create(self, request):
+        request_id = uuid4().hex[:12]
         # Handy for frontend dev/testing without calling AIMS.
         if request.query_params.get("dummy") == "1":
+            logger.info("[aims.similarity-video] request_id=%s dummy=1", request_id)
             return Response(DUMMY_SIMILARITY_RESPONSE, status=status.HTTP_200_OK)
 
         video_file = request.FILES.get("video_file")
         # Don't default paging for /v1/search: AIMS can be strict about accepted fields.
         page = request.data.get("page")
         page_size = request.data.get("page_size")
+        user_id = getattr(getattr(request, "user", None), "id", None)
+        filename = getattr(video_file, "name", "") if video_file else ""
+        content_type = getattr(video_file, "content_type", "") if video_file else ""
+        size_bytes = getattr(video_file, "size", None) if video_file else None
+
+        logger.info(
+            "[aims.similarity-video] request_id=%s start user_id=%s filename=%s content_type=%s size_bytes=%s page=%s page_size=%s",
+            request_id,
+            user_id,
+            filename,
+            content_type,
+            size_bytes,
+            page,
+            page_size,
+        )
 
         if not video_file:
+            logger.warning("[aims.similarity-video] request_id=%s missing video_file", request_id)
             return Response({"detail": "video_file is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         aims_upload_url = "https://api.aimsapi.com/v1/upload"
@@ -969,19 +988,65 @@ class SimilarityVideoViewSet(ViewSet):
             )
         }
 
-        response = requests.post(aims_upload_url, headers=headers, files=files, timeout=(10, 120))
+        upload_started_at = time.monotonic()
+        logger.info(
+            "[aims.similarity-video] request_id=%s upload_start filename=%s size_bytes=%s",
+            request_id,
+            filename,
+            size_bytes,
+        )
+        try:
+            response = requests.post(aims_upload_url, headers=headers, files=files, timeout=(10, 120))
+        except requests.exceptions.Timeout:
+            logger.warning(
+                "[aims.similarity-video] request_id=%s upload_timeout elapsed=%.3fs",
+                request_id,
+                time.monotonic() - upload_started_at,
+            )
+            return Response({"detail": "AIMS upload timed out."}, status=status.HTTP_504_GATEWAY_TIMEOUT)
+        except requests.exceptions.RequestException:
+            logger.exception(
+                "[aims.similarity-video] request_id=%s upload_request_failed elapsed=%.3fs",
+                request_id,
+                time.monotonic() - upload_started_at,
+            )
+            return Response({"detail": "AIMS upload failed."}, status=status.HTTP_502_BAD_GATEWAY)
+
+        logger.info(
+            "[aims.similarity-video] request_id=%s upload_done status=%s elapsed=%.3fs",
+            request_id,
+            response.status_code,
+            time.monotonic() - upload_started_at,
+        )
         try:
             aims_payload = response.json()
         except ValueError:
+            logger.warning(
+                "[aims.similarity-video] request_id=%s upload_invalid_json status=%s body_preview=%s",
+                request_id,
+                response.status_code,
+                response.text[:500] if getattr(response, "text", None) else "",
+            )
             return Response(
                 {"detail": "Invalid JSON received from AIMS."},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
         video_hash = aims_payload.get("hash") if isinstance(aims_payload, dict) else None
-        print("[aims] upload hash:", video_hash)
+        logger.info(
+            "[aims.similarity-video] request_id=%s upload_hash=%s response_keys=%s",
+            request_id,
+            video_hash,
+            sorted(aims_payload.keys()) if isinstance(aims_payload, dict) else type(aims_payload).__name__,
+        )
 
         if not video_hash:
+            logger.warning(
+                "[aims.similarity-video] request_id=%s upload_missing_hash status=%s payload=%s",
+                request_id,
+                response.status_code,
+                aims_payload,
+            )
             return Response(
                 {"detail": "AIMS upload did not return a hash.", "aims": aims_payload},
                 status=status.HTTP_502_BAD_GATEWAY,
@@ -995,16 +1060,51 @@ class SimilarityVideoViewSet(ViewSet):
             **headers,
             "Content-Type": "application/json",
         }
-        print("[aims] search payload:", search_payload)
-        search_response = requests.post(
-            aims_search_url,
-            headers=search_headers,
-            json=search_payload,
-            timeout=60,
+        search_started_at = time.monotonic()
+        logger.info(
+            "[aims.similarity-video] request_id=%s search_start hash=%s page=%s page_size=%s",
+            request_id,
+            video_hash,
+            page,
+            page_size,
+        )
+        try:
+            search_response = requests.post(
+                aims_search_url,
+                headers=search_headers,
+                json=search_payload,
+                timeout=60,
+            )
+        except requests.exceptions.Timeout:
+            logger.warning(
+                "[aims.similarity-video] request_id=%s search_timeout elapsed=%.3fs",
+                request_id,
+                time.monotonic() - search_started_at,
+            )
+            return Response({"detail": "AIMS search timed out."}, status=status.HTTP_504_GATEWAY_TIMEOUT)
+        except requests.exceptions.RequestException:
+            logger.exception(
+                "[aims.similarity-video] request_id=%s search_request_failed elapsed=%.3fs",
+                request_id,
+                time.monotonic() - search_started_at,
+            )
+            return Response({"detail": "AIMS search failed."}, status=status.HTTP_502_BAD_GATEWAY)
+
+        logger.info(
+            "[aims.similarity-video] request_id=%s search_done status=%s elapsed=%.3fs",
+            request_id,
+            search_response.status_code,
+            time.monotonic() - search_started_at,
         )
         try:
             search_json = search_response.json()
         except ValueError:
+            logger.warning(
+                "[aims.similarity-video] request_id=%s search_invalid_json status=%s body_preview=%s",
+                request_id,
+                search_response.status_code,
+                search_response.text[:500] if getattr(search_response, "text", None) else "",
+            )
             return Response(
                 {"detail": "Invalid JSON received from AIMS search."},
                 status=status.HTTP_502_BAD_GATEWAY,
@@ -1012,7 +1112,12 @@ class SimilarityVideoViewSet(ViewSet):
 
         if search_response.status_code >= 400:
             # Bubble up the error details so the frontend/dev can adjust the payload quickly.
-            print("[aims] search error:", search_response.status_code, search_json)
+            logger.warning(
+                "[aims.similarity-video] request_id=%s search_error status=%s payload=%s",
+                request_id,
+                search_response.status_code,
+                search_json,
+            )
             return Response(
                 {"detail": "AIMS search failed", "aims": search_json},
                 status=search_response.status_code,
@@ -1020,6 +1125,11 @@ class SimilarityVideoViewSet(ViewSet):
 
         # Return the same simplified schema as the other similarity endpoints.
         debug_moods = request.query_params.get("debug_moods") == "1"
+        logger.info(
+            "[aims.similarity-video] request_id=%s success total_elapsed=%.3fs",
+            request_id,
+            time.monotonic() - upload_started_at,
+        )
         return Response(_simplify_aims_payload(search_json, debug_moods=debug_moods), status=search_response.status_code)
 
 
