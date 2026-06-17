@@ -4,6 +4,7 @@ import logging
 import re
 
 from django.db import transaction
+from django.db.models import Q
 
 from rest_framework import permissions, status
 from rest_framework.parsers import FormParser, MultiPartParser
@@ -280,8 +281,10 @@ class SaveArtistsView(APIView):
 
         payload = request.data or {}
         items = payload.get("artists_with_spotify")
+        if items is None:
+            items = payload.get("artists")
         if not isinstance(items, list):
-            return Response({"detail": "artists_with_spotify must be a list"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "artists_with_spotify (or artists) must be a list"}, status=status.HTTP_400_BAD_REQUEST)
 
         normalized = []
         errors = []
@@ -299,17 +302,13 @@ class SaveArtistsView(APIView):
                 continue
             name = name.strip()
 
-            if not isinstance(spotify_url, str) or not spotify_url.strip():
-                errors.append({"index": idx, "detail": "spotify_url is required"})
-                continue
-            spotify_url = spotify_url.strip()
-
-            spotify_id = _extract_spotify_artist_id(spotify_url)
-            if not spotify_id:
+            spotify_url = spotify_url.strip() if isinstance(spotify_url, str) and spotify_url.strip() else ""
+            spotify_id = _extract_spotify_artist_id(spotify_url) if spotify_url else ""
+            if spotify_url and not spotify_id:
                 errors.append({"index": idx, "detail": "spotify_url is not a valid spotify artist url/uri"})
                 continue
 
-            key = (spotify_id, name)
+            key = (spotify_id or "", name.lower())
             if key in seen:
                 continue
             seen.add(key)
@@ -319,8 +318,10 @@ class SaveArtistsView(APIView):
         if not normalized:
             return Response({"created": 0, "updated": 0, "errors": errors}, status=status.HTTP_200_OK)
 
-        spotify_ids = [n["spotify_id"] for n in normalized]
-        existing = {a.spotify_id: a for a in Artist.objects.filter(spotify_id__in=spotify_ids)}
+        spotify_ids = [n["spotify_id"] for n in normalized if n["spotify_id"]]
+        names = [n["name"] for n in normalized]
+        existing_by_spotify = {a.spotify_id: a for a in Artist.objects.filter(label=label, spotify_id__in=spotify_ids)} if spotify_ids else {}
+        existing_by_name = {a.name.lower(): a for a in Artist.objects.filter(label=label, name__in=names)} if names else {}
 
         created = 0
         updated = 0
@@ -329,7 +330,9 @@ class SaveArtistsView(APIView):
             to_create = []
             for entry in normalized:
                 spotify_id = entry["spotify_id"]
-                artist = existing.get(spotify_id)
+                artist = existing_by_spotify.get(spotify_id) if spotify_id else None
+                if artist is None:
+                    artist = existing_by_name.get(entry["name"].lower())
                 if artist:
                     changed = False
                     if artist.label_id != label.id:
@@ -341,8 +344,11 @@ class SaveArtistsView(APIView):
                     if entry["name"] and artist.name != entry["name"]:
                         artist.name = entry["name"]
                         changed = True
+                    if spotify_id and artist.spotify_id != spotify_id:
+                        artist.spotify_id = spotify_id
+                        changed = True
                     if changed:
-                        artist.save(update_fields=["label", "spotify_url", "name", "updated"])
+                        artist.save(update_fields=["label", "spotify_url", "name", "spotify_id", "updated"])
                         updated += 1
                     continue
 
@@ -350,8 +356,8 @@ class SaveArtistsView(APIView):
                     Artist(
                         label=label,
                         name=entry["name"],
-                        spotify_url=entry["spotify_url"],
-                        spotify_id=entry["spotify_id"],
+                        spotify_url=entry["spotify_url"] or None,
+                        spotify_id=entry["spotify_id"] or "",
                     )
                 )
 
