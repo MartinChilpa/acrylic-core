@@ -21,6 +21,10 @@ class TeamConfigSerializer(serializers.ModelSerializer):
             "colors",
             "auth_promo",
             "sidenav",
+            "instagram_url",
+            "tiktok_url",
+            "youtube_url",
+            "other_url",
         )
 
     def get_team_name(self, obj: Club) -> str:

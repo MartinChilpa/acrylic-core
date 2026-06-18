@@ -29,6 +29,12 @@ class Club(BaseModel):
     auth_promo = models.JSONField(null=True, blank=True, default=dict)
     sidenav = models.JSONField(null=True, blank=True, default=dict)
 
+    # Social media URLs for whitelisting requests
+    instagram_url = models.URLField(max_length=255, blank=True)
+    tiktok_url    = models.URLField(max_length=255, blank=True)
+    youtube_url   = models.URLField(max_length=255, blank=True)
+    other_url     = models.URLField(max_length=255, blank=True)
+
     # Estado operativo
     is_active = models.BooleanField(default=True)
 

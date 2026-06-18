@@ -21,6 +21,7 @@ from aims import views as aims_views
 from aims import webhooks as aims_webhooks
 from label import views as label_views
 from club import views as club_views
+from license import urls as license_urls
 
 
 router = routers.DefaultRouter()
@@ -111,6 +112,10 @@ urlpatterns = [
 
         # Application
         path('aims/download-url/', aims_views.AimsDownloadUrlView.as_view(), name='aims_download_url'),
+
+        # License endpoints
+        path('', include(license_urls)),
+
         path('', include(router.urls)),
 
         # Ingestion (CSV preview)
