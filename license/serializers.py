@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from django.core.mail import send_mail
+from django.core.mail import EmailMessage
 from django.conf import settings
 import logging
 
@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class LicenseSerializer(serializers.ModelSerializer):
+    track = serializers.CharField(write_only=True)  # Accept UUID as string on input
     track_uuid = serializers.CharField(source='track.uuid', read_only=True)
     track_id = serializers.IntegerField(source='track.id', read_only=True)
     isrc = serializers.CharField(source='track.isrc', read_only=True)
@@ -34,7 +35,7 @@ class LicenseSerializer(serializers.ModelSerializer):
     def get_cover_image(self, obj):
         if not obj.track.cover_image:
             return None
-        # Return absolute URL for S3 or local files
+        # Return absolute URL for S3 or loc
         url = str(obj.track.cover_image)
         if url.startswith('http'):
             return url
@@ -98,9 +99,9 @@ class LicenseSerializer(serializers.ModelSerializer):
         if not track.distributor:
             raise serializers.ValidationError({"track": "Track must have a distributor."})
 
-        # Validate distributor is set up for whitelisting
+        # Validate distributor has whitelist email configured
         distributor = track.distributor
-        if not distributor.whitelist_send or not distributor.whitelist_email:
+        if not distributor.whitelist_email:
             raise serializers.ValidationError(
                 {"track": "Distributor is not configured to send whitelist emails."}
             )
@@ -125,13 +126,14 @@ class LicenseSerializer(serializers.ModelSerializer):
         # Send whitelist email synchronously
         try:
             subject, from_email, to_email, body, reply_to = build_whitelist_email(license_obj)
-            send_mail(
+            email = EmailMessage(
                 subject=subject,
-                message=body,
+                body=body,
                 from_email=from_email,
-                recipient_list=[to_email],
+                to=[to_email],
                 headers={'Reply-To': reply_to},
             )
+            email.send()
             license_obj.email_sent = True
         except Exception as e:
             logger.error(f"Failed to send whitelist email for License {license_obj.uuid}: {str(e)}")

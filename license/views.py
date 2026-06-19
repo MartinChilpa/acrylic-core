@@ -1,7 +1,7 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.conf import settings
 
 from license.models import License
@@ -13,8 +13,26 @@ class LicenseViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     lookup_field = 'uuid'
 
+    def get_authenticators(self):
+        """Remove JWT authentication requirement for update_status action."""
+        # Check if the request path contains /status/ (for update_status action)
+        if '/status/' in self.request.path:
+            return []
+        return super().get_authenticators()
+
+    def get_permissions(self):
+        """Allow unauthenticated access to update_status action."""
+        if self.action == 'update_status':
+            return [AllowAny()]
+        return super().get_permissions()
+
     def get_queryset(self):
         """Return only licenses for the current user's club."""
+        # For update_status action, allow access to all licenses (internal token auth)
+        if self.action == 'update_status':
+            return License.objects.all()
+
+        # For other actions, filter by user's club
         user = self.request.user
         if hasattr(user, 'club') and user.club:
             return License.objects.filter(club=user.club)
@@ -26,6 +44,16 @@ class LicenseViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete a license and return success message with UUID."""
+        license_obj = self.get_object()
+        uuid = license_obj.uuid
+        license_obj.delete()
+        return Response(
+            {"detail": f"License {uuid} deleted successfully."},
+            status=status.HTTP_204_NO_CONTENT
+        )
 
     @action(detail=True, methods=['patch'], url_path='status')
     def update_status(self, request, uuid=None):

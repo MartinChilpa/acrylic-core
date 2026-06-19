@@ -23,8 +23,8 @@ class License(BaseModel):
     email_error             = models.TextField(blank=True)
 
     class Meta:
-        verbose_name = 'Whitelist Request'
-        verbose_name_plural = 'Whitelist Requests'
+        verbose_name = 'License'
+        verbose_name_plural = 'Licenses'
         constraints = [
             models.UniqueConstraint(fields=['club', 'track'], name='unique_license_club_track')
         ]
