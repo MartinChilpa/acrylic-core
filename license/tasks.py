@@ -3,14 +3,6 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-PLATFORM_LABELS = {
-    'instagram': 'Instagram',
-    'tiktok':    'TikTok',
-    'youtube':   'YouTube',
-    'other':     'Other',
-}
-
-
 def build_whitelist_email(license_obj):
     """
     Returns (subject, from_email, to_email, body, reply_to) for a License.
@@ -20,21 +12,16 @@ def build_whitelist_email(license_obj):
     track       = license_obj.track
     distributor = track.distributor
 
-    platform_url_map = {
-        'instagram': club.instagram_url,
-        'tiktok':    club.tiktok_url,
-        'youtube':   club.youtube_url,
-        'other':     club.other_url,
-    }
-
+    # All three platforms are sent to distributor
     platform_lines = []
-    for key in license_obj.selected_platforms:
-        label = PLATFORM_LABELS.get(key, key.capitalize())
-        url   = platform_url_map.get(key, '')
-        if url:
-            platform_lines.append(f'  • {label}: {url}')
+    if club.instagram_url:
+        platform_lines.append(f'  • Instagram: {club.instagram_url}')
+    if club.tiktok_url:
+        platform_lines.append(f'  • TikTok: {club.tiktok_url}')
+    if club.youtube_url:
+        platform_lines.append(f'  • YouTube: {club.youtube_url}')
 
-    platforms_block = '\n'.join(platform_lines) if platform_lines else '  (no platforms selected)'
+    platforms_block = '\n'.join(platform_lines) if platform_lines else '  (no platforms configured)'
 
     body = (
         f"Hey {distributor.name},\n\n"

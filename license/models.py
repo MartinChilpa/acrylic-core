@@ -3,7 +3,7 @@ from common.models import BaseModel
 
 
 class License(BaseModel):
-    STATUS_PENDING  = 'pending'
+    STATUS_PENDING  = 'pending' # Inprogress  
     STATUS_APPROVED = 'approved'
     STATUS_REJECTED = 'rejected'
     STATUS_CHOICES = [
@@ -14,11 +14,8 @@ class License(BaseModel):
 
     club                    = models.ForeignKey('club.Club',    related_name='licenses', on_delete=models.CASCADE)
     track                   = models.ForeignKey('catalog.Track', related_name='licenses', on_delete=models.CASCADE)
-    tier                    = models.ForeignKey('buyer.Tier',   related_name='licenses', on_delete=models.SET_NULL, null=True, blank=True)
 
     status                  = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
-    extended_commercial_use = models.BooleanField(default=False)
-    selected_platforms      = models.JSONField(default=list)
     email_sent              = models.BooleanField(default=False)
     email_error             = models.TextField(blank=True)
 

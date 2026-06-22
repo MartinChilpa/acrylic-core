@@ -12,7 +12,7 @@ class LicenseAdmin(admin.ModelAdmin):
     list_filter   = ['status', 'email_sent']
     search_fields = ['club__club_name', 'track__name', 'track__isrc']
     readonly_fields = ['email_error', 'email_sent', 'created', 'updated', 'uuid']
-    raw_id_fields = ['club', 'track', 'tier']
+    raw_id_fields = ['club', 'track']
 
     actions = ['resend_whitelist_email']
 

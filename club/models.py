@@ -33,7 +33,6 @@ class Club(BaseModel):
     instagram_url = models.URLField(max_length=255, blank=True)
     tiktok_url    = models.URLField(max_length=255, blank=True)
     youtube_url   = models.URLField(max_length=255, blank=True)
-    other_url     = models.URLField(max_length=255, blank=True)
 
     # Estado operativo
     is_active = models.BooleanField(default=True)

@@ -11,21 +11,19 @@ logger = logging.getLogger(__name__)
 
 
 class LicenseSerializer(serializers.ModelSerializer):
-    track = serializers.CharField(write_only=True)  # Accept UUID as string on input
+    track = serializers.CharField(write_only=True)
     track_uuid = serializers.CharField(source='track.uuid', read_only=True)
     track_id = serializers.IntegerField(source='track.id', read_only=True)
     isrc = serializers.CharField(source='track.isrc', read_only=True)
     track_name = serializers.CharField(source='track.name', read_only=True)
     artist_name = serializers.SerializerMethodField()
     cover_image = serializers.SerializerMethodField()
-    total_price = serializers.SerializerMethodField()
 
     class Meta:
         model = License
         fields = [
             'uuid', 'track', 'track_uuid', 'track_id', 'isrc', 'track_name',
-            'artist_name', 'cover_image', 'extended_commercial_use', 'total_price',
-            'status', 'created', 'updated'
+            'artist_name', 'cover_image', 'status', 'created', 'updated'
         ]
         read_only_fields = ['uuid', 'status', 'created', 'updated']
 
@@ -45,82 +43,66 @@ class LicenseSerializer(serializers.ModelSerializer):
             return request.build_absolute_uri(obj.track.cover_image.url)
         return url
 
-    def get_total_price(self, obj):
-        # Calculate price based on tier and extended_commercial_use
-        if obj.tier and obj.tier.code == 'artistpromo':
-            # artistpromo: $0 base + $300 if extended_commercial_use
-            base = 0
-            addon = 300 if obj.extended_commercial_use else 0
-            return f"{base + addon}.00"
-        elif obj.tier and obj.tier.code == 'bid2clear':
-            # bid2clear: $1500 base + $300 if extended_commercial_use
-            base = 1500
-            addon = 300 if obj.extended_commercial_use else 0
-            return f"{base + addon}.00"
-        # Default to 0
-        return "0.00"
-
     def create(self, validated_data):
         request = self.context.get('request')
         if not request or not request.user or not hasattr(request.user, 'club'):
             raise serializers.ValidationError("User must be a club to create a license.")
 
         club = request.user.club
-        track_uuid = self.initial_data.get('track')
-        selected_platforms = self.initial_data.get('selected_platforms', [])
-        extended_commercial_use = self.initial_data.get('extended_commercial_use', False)
+        track_identifier = self.initial_data.get('track')
 
-        # Validate track exists
-        try:
-            track = Track.objects.get(uuid=track_uuid)
-        except Track.DoesNotExist:
-            raise serializers.ValidationError({"track": "Track not found."})
+        logger.info(f"[License] create() called: track_identifier={track_identifier}")
 
-        # Validate selected_platforms is not empty
-        if not selected_platforms or not isinstance(selected_platforms, list):
-            raise serializers.ValidationError({"selected_platforms": "At least one platform must be selected."})
+        # Validate track exists — try UUID first, then ISRC, then spotify_id
+        track = None
+        if track_identifier:
+            try:
+                track = Track.objects.get(uuid=track_identifier)
+                logger.info(f"[License] Found track by UUID: {track.uuid}")
+            except Track.DoesNotExist:
+                try:
+                    track = Track.objects.get(isrc=track_identifier)
+                    logger.info(f"[License] Found track by ISRC: {track.isrc}")
+                except Track.DoesNotExist:
+                    try:
+                        track = Track.objects.get(spotify_id=track_identifier)
+                        logger.info(f"[License] Found track by spotify_id: {track.spotify_id}")
+                    except Track.DoesNotExist:
+                        logger.warning(f"[License] Track not found: {track_identifier}")
 
-        # Validate each selected platform has a URL on the club
-        platform_urls = {
-            'instagram': club.instagram_url,
-            'tiktok': club.tiktok_url,
-            'youtube': club.youtube_url,
-            'other': club.other_url,
-        }
-        for platform in selected_platforms:
-            if platform not in platform_urls or not platform_urls[platform]:
-                raise serializers.ValidationError(
-                    {"selected_platforms": f"Platform '{platform}' is not configured on this club."}
-                )
+        if not track:
+            raise serializers.ValidationError({"track": f"Track not found."})
 
         # Validate track has isrc and distributor
         if not track.isrc:
+            logger.error(f"[License] Track {track.uuid} has no ISRC")
             raise serializers.ValidationError({"track": "Track must have an ISRC."})
         if not track.distributor:
+            logger.error(f"[License] Track {track.uuid} has no distributor")
             raise serializers.ValidationError({"track": "Track must have a distributor."})
 
-        # Validate distributor has whitelist email configured
+        # Validate distributor has whitelist email
         distributor = track.distributor
         if not distributor.whitelist_email:
-            raise serializers.ValidationError(
-                {"track": "Distributor is not configured to send whitelist emails."}
-            )
+            logger.error(f"[License] Distributor {distributor.id} has no whitelist_email")
+            raise serializers.ValidationError({"track": "Distributor not configured for whitelisting."})
+
+        # Validate club has required social URLs
+        if not (club.instagram_url and club.tiktok_url and club.youtube_url):
+            logger.error(f"[License] Club {club.id} missing required social URLs")
+            raise serializers.ValidationError({"detail": "Club must configure Instagram, TikTok, and YouTube URLs."})
 
         # Check for duplicate license
         existing = License.objects.filter(club=club, track=track).exists()
         if existing:
-            raise serializers.ValidationError(
-                "A license request already exists for this track."
-            )
+            logger.warning(f"[License] Duplicate license for club={club.id}, track={track.uuid}")
+            raise serializers.ValidationError({"detail": "License already exists for this track."})
 
-        # Create the license record
+        # Create license (no tier, extended_commercial_use, or selected_platforms)
         license_obj = License.objects.create(
             club=club,
             track=track,
-            tier=club.user.buyer.tier if hasattr(club.user, 'buyer') else None,
             status=License.STATUS_PENDING,
-            extended_commercial_use=extended_commercial_use,
-            selected_platforms=selected_platforms,
         )
 
         # Send whitelist email synchronously
