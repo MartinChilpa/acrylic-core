@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.core.mail import EmailMessage
 from django.conf import settings
+from django.db import IntegrityError
 import logging
 
 from license.models import License
@@ -43,7 +44,7 @@ class LicenseSerializer(serializers.ModelSerializer):
             return request.build_absolute_uri(obj.track.cover_image.url)
         return url
 
-    def create(self, validated_data):
+    def validate(self, data):
         request = self.context.get('request')
         if not request or not request.user or not hasattr(request.user, 'club'):
             raise serializers.ValidationError("User must be a club to create a license.")
@@ -51,7 +52,7 @@ class LicenseSerializer(serializers.ModelSerializer):
         club = request.user.club
         track_identifier = self.initial_data.get('track')
 
-        logger.info(f"[License] create() called: track_identifier={track_identifier}")
+        logger.info(f"[License] validate() called: track_identifier={track_identifier}")
 
         # Validate track exists — try UUID first, then ISRC, then spotify_id
         track = None
@@ -98,12 +99,19 @@ class LicenseSerializer(serializers.ModelSerializer):
             logger.warning(f"[License] Duplicate license for club={club.id}, track={track.uuid}")
             raise serializers.ValidationError({"detail": "License already exists for this track."})
 
-        # Create license (no tier, extended_commercial_use, or selected_platforms)
-        license_obj = License.objects.create(
-            club=club,
-            track=track,
-            status=License.STATUS_PENDING,
-        )
+        data['club'] = club
+        data['track'] = track
+        return data
+
+    def create(self, validated_data):
+        try:
+            license_obj = License.objects.create(
+                club=validated_data['club'],
+                track=validated_data['track'],
+                status=License.STATUS_PENDING,
+            )
+        except IntegrityError:
+            raise serializers.ValidationError({"detail": "License already exists for this track."})
 
         # Send whitelist email synchronously
         try:
