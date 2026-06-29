@@ -24,7 +24,6 @@ class Distributor(BaseModel):
     email = models.EmailField(blank=True)
     # whitelist
     whitelist_email = models.EmailField(blank=True)
-    whitelist_send = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['name']

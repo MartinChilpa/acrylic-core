@@ -28,6 +28,10 @@ class ClubAdmin(admin.ModelAdmin):
         'colors',
         'auth_promo',
         'sidenav',
+        'instagram_url',
+        'tiktok_url',
+        'youtube_url',
+        'other_url',
         'is_active',
     ]
 

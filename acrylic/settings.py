@@ -71,6 +71,7 @@ INSTALLED_APPS = [
     'buyer',
     'club',
     'label',
+    'license',
 ]
 
 MIDDLEWARE = [
@@ -424,6 +425,9 @@ ARTIST_PROFILE_BASE_URL = os.environ.get('ARTIST_PROFILE_BASE_URL', 'https://app
 from import_export.formats.base_formats import CSV, XLSX
 IMPORT_FORMATS = [CSV, XLSX]
 EXPORT_FORMATS = [CSV, XLSX]
+
+# Whitelisting (License) internal API token
+WHITELIST_INTERNAL_TOKEN = config('WHITELIST_INTERNAL_TOKEN', default='dev-token-change-in-prod')
 
 # Activate Django-Heroku.
 django_heroku.settings(locals())

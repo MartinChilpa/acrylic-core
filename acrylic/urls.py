@@ -21,6 +21,7 @@ from aims import views as aims_views
 from aims import webhooks as aims_webhooks
 from label import views as label_views
 from club import views as club_views
+from license import views as license_views
 
 
 router = routers.DefaultRouter()
@@ -57,6 +58,8 @@ router.register('aims/similarity',aims_views.SimilarityViewSet,  basename='aims-
 router.register('aims/similarity-prompt', aims_views.SimilarityPromptViewSet, basename='aims-similarity-prompt')
 router.register('aims/similarity-video', aims_views.SimilarityVideoViewSet, basename='aims-similarity-video')
 
+# licenses
+router.register('my-club/licenses', license_views.LicenseViewSet, basename='license')
 
 # buyer account
 # tbd
@@ -111,6 +114,7 @@ urlpatterns = [
 
         # Application
         path('aims/download-url/', aims_views.AimsDownloadUrlView.as_view(), name='aims_download_url'),
+
         path('', include(router.urls)),
 
         # Ingestion (CSV preview)
