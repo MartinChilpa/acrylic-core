@@ -49,6 +49,9 @@ class TeamConfigEndpointTests(APITestCase):
                     "text": "#E5E5E5",
                     "muted_text": "#A3A3A3",
                 },
+                "instagram_url": "",
+                "tiktok_url": "",
+                "youtube_url": "",
             },
         )
 
