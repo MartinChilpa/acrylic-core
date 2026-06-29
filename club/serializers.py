@@ -24,7 +24,6 @@ class TeamConfigSerializer(serializers.ModelSerializer):
             "instagram_url",
             "tiktok_url",
             "youtube_url",
-            "other_url",
         )
 
     def get_team_name(self, obj: Club) -> str:
