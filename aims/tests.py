@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 from django.test import TestCase, override_settings
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 
 from rest_framework.test import APIClient
 
@@ -248,6 +249,68 @@ class AimsSpotifySchemaTests(TestCase):
         self.assertEqual(payload["results"][0]["track_id"], match_track.id)
         self.assertAlmostEqual(payload["results"][0]["match_score"], 0.93, places=2)
         self.assertEqual(payload["results"][0]["artist_country_code2"], "MX")
+
+
+class AimsSimilarityVideoSplitTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        User = get_user_model()
+        self.user = User.objects.create_user(username="u_video", password="p")
+        self.client.force_authenticate(user=self.user)
+
+    @patch("aims.views.requests.post")
+    def test_similarity_video_upload_returns_hash_only(self, mock_post):
+        class _Resp:
+            status_code = 200
+
+            def json(self):
+                return {"hash": "video-hash-123"}
+
+        mock_post.return_value = _Resp()
+
+        uploaded = SimpleUploadedFile("video.mp4", b"video-bytes", content_type="video/mp4")
+        res = self.client.post(
+            "/api/v1/aims/similarity-video-upload/",
+            {"video_file": uploaded},
+            format="multipart",
+        )
+
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json(), {"hash": "video-hash-123"})
+        mock_post.assert_called_once()
+        self.assertEqual(mock_post.call_args[0][0], "https://api.aimsapi.com/v1/upload")
+
+    @patch("aims.views.requests.post")
+    def test_similarity_video_search_uses_hash(self, mock_post):
+        class _Resp:
+            status_code = 200
+
+            def json(self):
+                return {
+                    "count": 1,
+                    "next": None,
+                    "previous": None,
+                    "results": [
+                        {
+                            "id_client": 1,
+                            "track_name": "Dummy Track",
+                            "artist_canonical": "Dummy Artist",
+                        }
+                    ],
+                }
+
+        mock_post.return_value = _Resp()
+
+        res = self.client.post(
+            "/api/v1/aims/similarity-video-search/",
+            {"hash": "video-hash-123"},
+            format="json",
+        )
+
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()["count"], 1)
+        mock_post.assert_called_once()
+        self.assertEqual(mock_post.call_args[0][0], "https://api.aimsapi.com/v1/search")
 
 
 class AimsDownloadUrlTests(TestCase):
