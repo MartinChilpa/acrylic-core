@@ -11,7 +11,7 @@ from rest_framework.viewsets import ViewSet
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import serializers
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -185,6 +185,10 @@ DUMMY_SIMILARITY_RESPONSE = {
         "chartmetric_instagram_top_cities": None,
         "chartmetric_instagram_top_countries": None,
     }],
+}
+
+DUMMY_SIMILARITY_VIDEO_UPLOAD_RESPONSE = {
+    "hash": "dummy-video-hash",
 }
 
 # Provisional shortcut for frontend dev/testing:
@@ -931,40 +935,22 @@ class SimilarityPromptViewSet(ViewSet):
         return Response(_simplify_aims_payload(aims_payload, debug_moods=debug_moods), status=response.status_code)
 
 
-class SimilarityVideoViewSet(ViewSet):
-    """
-    Upload a video to AIMS and return the cache hash.
+class SimilarityVideoBaseViewSet(ViewSet):
+    parser_classes = (MultiPartParser, FormParser, JSONParser)
 
-    Proxies to AIMS: POST https://api.aimsapi.com/v1/upload
-    """
-
-    parser_classes = (MultiPartParser, FormParser)
-
-    def create(self, request):
-        request_id = uuid4().hex[:12]
-        # Handy for frontend dev/testing without calling AIMS.
-        if request.query_params.get("dummy") == "1":
-            logger.info("[aims.similarity-video] request_id=%s dummy=1", request_id)
-            return Response(DUMMY_SIMILARITY_RESPONSE, status=status.HTTP_200_OK)
-
-        video_file = request.FILES.get("video_file")
-        # Don't default paging for /v1/search: AIMS can be strict about accepted fields.
-        page = request.data.get("page")
-        page_size = request.data.get("page_size")
+    def _upload_video_to_aims(self, request, request_id, video_file):
         user_id = getattr(getattr(request, "user", None), "id", None)
         filename = getattr(video_file, "name", "") if video_file else ""
         content_type = getattr(video_file, "content_type", "") if video_file else ""
         size_bytes = getattr(video_file, "size", None) if video_file else None
 
         logger.info(
-            "[aims.similarity-video] request_id=%s start user_id=%s filename=%s content_type=%s size_bytes=%s page=%s page_size=%s",
+            "[aims.similarity-video] request_id=%s start user_id=%s filename=%s content_type=%s size_bytes=%s",
             request_id,
             user_id,
             filename,
             content_type,
             size_bytes,
-            page,
-            page_size,
         )
 
         if not video_file:
@@ -972,14 +958,11 @@ class SimilarityVideoViewSet(ViewSet):
             return Response({"detail": "video_file is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         aims_upload_url = "https://api.aimsapi.com/v1/upload"
-
         headers = {
             "X-Requested-With": "XMLHttpRequest",
             "X-Client-Id": settings.AIMS_CLIENT_ID,
             "X-Client-Secret": settings.AIMS_API_SECRET,
         }
-
-        # AIMS expects a multipart upload. Their docs commonly use `file` as the field name.
         files = {
             "file": (
                 getattr(video_file, "name", "video"),
@@ -1052,14 +1035,17 @@ class SimilarityVideoViewSet(ViewSet):
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
-        aims_search_url = "https://api.aimsapi.com/v1/search"
-        # Follow AIMS documented schema: required `seeds` and optional paging.
-        search_payload = {"seeds": [{"type": "video", "value": video_hash}]}
+        return {"hash": video_hash, "aims": aims_payload, "status_code": response.status_code}
 
-        search_headers = {
-            **headers,
+    def _search_video_on_aims(self, request, request_id, video_hash, page=None, page_size=None):
+        aims_search_url = "https://api.aimsapi.com/v1/search"
+        headers = {
+            "X-Requested-With": "XMLHttpRequest",
+            "X-Client-Id": settings.AIMS_CLIENT_ID,
+            "X-Client-Secret": settings.AIMS_API_SECRET,
             "Content-Type": "application/json",
         }
+        search_payload = {"seeds": [{"type": "video", "value": video_hash}]}
         search_started_at = time.monotonic()
         logger.info(
             "[aims.similarity-video] request_id=%s search_start hash=%s page=%s page_size=%s",
@@ -1071,7 +1057,7 @@ class SimilarityVideoViewSet(ViewSet):
         try:
             search_response = requests.post(
                 aims_search_url,
-                headers=search_headers,
+                headers=headers,
                 json=search_payload,
                 timeout=60,
             )
@@ -1111,7 +1097,6 @@ class SimilarityVideoViewSet(ViewSet):
             )
 
         if search_response.status_code >= 400:
-            # Bubble up the error details so the frontend/dev can adjust the payload quickly.
             logger.warning(
                 "[aims.similarity-video] request_id=%s search_error status=%s payload=%s",
                 request_id,
@@ -1123,14 +1108,94 @@ class SimilarityVideoViewSet(ViewSet):
                 status=search_response.status_code,
             )
 
-        # Return the same simplified schema as the other similarity endpoints.
         debug_moods = request.query_params.get("debug_moods") == "1"
         logger.info(
             "[aims.similarity-video] request_id=%s success total_elapsed=%.3fs",
             request_id,
-            time.monotonic() - upload_started_at,
+            time.monotonic() - search_started_at,
         )
-        return Response(_simplify_aims_payload(search_json, debug_moods=debug_moods), status=search_response.status_code)
+        return {
+            "payload": _simplify_aims_payload(search_json, debug_moods=debug_moods),
+            "status_code": search_response.status_code,
+        }
+
+
+class SimilarityVideoUploadViewSet(SimilarityVideoBaseViewSet):
+    """
+    Upload a video to AIMS and return the cache hash.
+
+    Proxies to AIMS: POST https://api.aimsapi.com/v1/upload
+    """
+
+    def create(self, request):
+        request_id = uuid4().hex[:12]
+        if request.query_params.get("dummy") == "1":
+            logger.info("[aims.similarity-video] request_id=%s dummy=1 upload", request_id)
+            return Response(DUMMY_SIMILARITY_VIDEO_UPLOAD_RESPONSE, status=status.HTTP_200_OK)
+
+        upload_result = self._upload_video_to_aims(request, request_id, request.FILES.get("video_file"))
+        if isinstance(upload_result, Response):
+            return upload_result
+        return Response(
+            {"hash": upload_result["hash"]},
+            status=upload_result["status_code"],
+        )
+
+
+class SimilarityVideoSearchViewSet(SimilarityVideoBaseViewSet):
+    """
+    Search AIMS using a previously uploaded video hash.
+
+    Proxies to AIMS: POST https://api.aimsapi.com/v1/search
+    """
+
+    def create(self, request):
+        request_id = uuid4().hex[:12]
+        if request.query_params.get("dummy") == "1":
+            logger.info("[aims.similarity-video] request_id=%s dummy=1 search", request_id)
+            return Response(DUMMY_SIMILARITY_RESPONSE, status=status.HTTP_200_OK)
+
+        video_hash = request.data.get("hash") or request.data.get("video_hash")
+        page = request.data.get("page", 1)
+        page_size = request.data.get("page_size", 20)
+        if not video_hash:
+            return Response({"detail": "hash is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        search_result = self._search_video_on_aims(request, request_id, video_hash, page=page, page_size=page_size)
+        if isinstance(search_result, Response):
+            return search_result
+        return Response(search_result["payload"], status=search_result["status_code"])
+
+
+class SimilarityVideoViewSet(SimilarityVideoBaseViewSet):
+    """
+    Backwards-compatible endpoint: upload a video, get the hash, then search AIMS.
+
+    Proxies to AIMS:
+      POST https://api.aimsapi.com/v1/upload
+      POST https://api.aimsapi.com/v1/search
+    """
+
+    def create(self, request):
+        request_id = uuid4().hex[:12]
+        if request.query_params.get("dummy") == "1":
+            logger.info("[aims.similarity-video] request_id=%s dummy=1", request_id)
+            return Response(DUMMY_SIMILARITY_RESPONSE, status=status.HTTP_200_OK)
+
+        upload_result = self._upload_video_to_aims(request, request_id, request.FILES.get("video_file"))
+        if isinstance(upload_result, Response):
+            return upload_result
+
+        search_result = self._search_video_on_aims(
+            request,
+            request_id,
+            upload_result["hash"],
+            page=request.data.get("page"),
+            page_size=request.data.get("page_size"),
+        )
+        if isinstance(search_result, Response):
+            return search_result
+        return Response(search_result["payload"], status=search_result["status_code"])
 
 
 class AimsDownloadUrlView(APIView):

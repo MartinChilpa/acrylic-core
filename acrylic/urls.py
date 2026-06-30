@@ -56,6 +56,8 @@ router.register('my-artist/prices', catalog_views.MyPriceViewSet)
 # aims
 router.register('aims/similarity',aims_views.SimilarityViewSet,  basename='aims-similarity')
 router.register('aims/similarity-prompt', aims_views.SimilarityPromptViewSet, basename='aims-similarity-prompt')
+router.register('aims/similarity-video-upload', aims_views.SimilarityVideoUploadViewSet, basename='aims-similarity-video-upload')
+router.register('aims/similarity-video-search', aims_views.SimilarityVideoSearchViewSet, basename='aims-similarity-video-search')
 router.register('aims/similarity-video', aims_views.SimilarityVideoViewSet, basename='aims-similarity-video')
 
 # licenses
