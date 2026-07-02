@@ -202,6 +202,7 @@ class Track(BaseModel):
 
     # cost
     price = models.ForeignKey(Price, related_name='tracks', blank=True, null=True, on_delete=models.SET_NULL)
+    currency = models.CharField(max_length=3, default='USD')
 
     #moods
     #cultures

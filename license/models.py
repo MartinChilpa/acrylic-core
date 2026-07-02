@@ -19,6 +19,13 @@ class License(BaseModel):
     email_sent              = models.BooleanField(default=False)
     email_error             = models.TextField(blank=True)
 
+    # Financial snapshots (taken at creation time for historical accuracy)
+    tier                    = models.CharField(max_length=20, blank=True)
+    extended_commercial_use = models.BooleanField(default=False)
+    price                   = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    currency                = models.CharField(max_length=3, default='USD')
+    ecu_unit                = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
     class Meta:
         verbose_name = 'License'
         verbose_name_plural = 'Licenses'
@@ -26,6 +33,10 @@ class License(BaseModel):
             models.UniqueConstraint(fields=['club', 'track'], name='unique_license_club_track')
         ]
         ordering = ['-created']
+
+    @property
+    def revenue(self):
+        return self.price + self.ecu_unit
 
     def __str__(self):
         return f"{self.club} — {self.track} ({self.status})"

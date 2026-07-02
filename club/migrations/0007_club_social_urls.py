@@ -15,11 +15,11 @@ class Migration(migrations.Migration):
             name="instagram_url",
             field=models.URLField(blank=True, max_length=255),
         ),
-        migrations.AddField(
-            model_name="club",
-            name="other_url",
-            field=models.URLField(blank=True, max_length=255),
-        ),
+        # migrations.AddField(
+        #     model_name="club",
+        #     name="other_url",
+        #     field=models.URLField(blank=True, max_length=255),
+        # ),
         migrations.AddField(
             model_name="club",
             name="tiktok_url",

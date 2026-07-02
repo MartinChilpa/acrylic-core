@@ -31,7 +31,6 @@ class ClubAdmin(admin.ModelAdmin):
         'instagram_url',
         'tiktok_url',
         'youtube_url',
-        'other_url',
         'is_active',
     ]
 
