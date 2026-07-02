@@ -3,6 +3,7 @@ Django settings for acrylic project.
 """
 import os
 from datetime import timedelta
+from decimal import Decimal
 from decouple import config
 import django_heroku
 import sentry_sdk
@@ -428,6 +429,9 @@ EXPORT_FORMATS = [CSV, XLSX]
 
 # Whitelisting (License) internal API token
 WHITELIST_INTERNAL_TOKEN = config('WHITELIST_INTERNAL_TOKEN', default='dev-token-change-in-prod')
+
+# Extended Commercial Use fee
+ECU_UNIT_PRICE = Decimal('300')
 
 # Activate Django-Heroku.
 django_heroku.settings(locals())
