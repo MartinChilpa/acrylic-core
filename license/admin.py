@@ -1,17 +1,56 @@
 from django.contrib import admin
 from django.core.mail import send_mail
 from django.conf import settings
+from import_export.admin import ExportMixin
+from import_export import resources, fields as ie_fields
 
 from license.models import License
 from license.tasks import build_whitelist_email
 
 
+class LicenseResource(resources.ModelResource):
+    transaction_date = ie_fields.Field(attribute='created', column_name='Transaction Date')
+    club_name = ie_fields.Field(column_name='Club Name')
+    artist_name = ie_fields.Field(column_name='Artist Name')
+    track_title = ie_fields.Field(column_name='Track Title')
+    isrc = ie_fields.Field(column_name='ISRC')
+    tier_col = ie_fields.Field(attribute='tier', column_name='Tier')
+    ecu_col = ie_fields.Field(attribute='extended_commercial_use', column_name='Extended Commercial Use')
+    currency_col = ie_fields.Field(attribute='currency', column_name='Currency')
+    price_col = ie_fields.Field(attribute='price', column_name='Price')
+    ecu_unit_col = ie_fields.Field(attribute='ecu_unit', column_name='ECU Unit')
+    revenue_col = ie_fields.Field(column_name='Revenue')
+
+    def dehydrate_club_name(self, obj):
+        return obj.club.club_name
+
+    def dehydrate_artist_name(self, obj):
+        return obj.track.artist.name if obj.track.artist else ''
+
+    def dehydrate_track_title(self, obj):
+        return obj.track.name
+
+    def dehydrate_isrc(self, obj):
+        return obj.track.isrc
+
+    def dehydrate_revenue_col(self, obj):
+        return obj.revenue
+
+    class Meta:
+        model = License
+        fields = ('transaction_date', 'club_name', 'artist_name', 'track_title',
+                  'isrc', 'tier_col', 'ecu_col', 'currency_col',
+                  'price_col', 'ecu_unit_col', 'revenue_col')
+        export_order = fields
+
+
 @admin.register(License)
-class LicenseAdmin(admin.ModelAdmin):
-    list_display  = ['club', 'track', 'status', 'email_sent', 'created']
-    list_filter   = ['status', 'email_sent']
+class LicenseAdmin(ExportMixin, admin.ModelAdmin):
+    resource_class = LicenseResource
+    list_display  = ['club', 'track', 'status', 'tier', 'extended_commercial_use', 'email_sent', 'created']
+    list_filter   = ['status', 'tier', 'extended_commercial_use', 'email_sent']
     search_fields = ['club__club_name', 'track__name', 'track__isrc']
-    readonly_fields = ['email_error', 'email_sent', 'created', 'updated', 'uuid']
+    readonly_fields = ['email_error', 'email_sent', 'created', 'updated', 'uuid', 'tier', 'price', 'currency', 'ecu_unit', 'revenue']
     raw_id_fields = ['club', 'track']
 
     actions = ['resend_whitelist_email']
