@@ -2,6 +2,7 @@ from rest_framework import serializers
 from django.core.mail import EmailMessage
 from django.conf import settings
 from django.db import IntegrityError
+from decimal import Decimal
 import logging
 
 from license.models import License
@@ -19,14 +20,17 @@ class LicenseSerializer(serializers.ModelSerializer):
     track_name = serializers.CharField(source='track.name', read_only=True)
     artist_name = serializers.SerializerMethodField()
     cover_image = serializers.SerializerMethodField()
+    extended_commercial_use = serializers.BooleanField(required=False, default=False, write_only=True)
 
     class Meta:
         model = License
         fields = [
             'uuid', 'track', 'track_uuid', 'track_id', 'isrc', 'track_name',
-            'artist_name', 'cover_image', 'status', 'created', 'updated'
+            'artist_name', 'cover_image', 'status', 'extended_commercial_use',
+            'tier', 'price', 'currency', 'ecu_unit', 'revenue',
+            'created', 'updated'
         ]
-        read_only_fields = ['uuid', 'status', 'created', 'updated']
+        read_only_fields = ['uuid', 'status', 'tier', 'price', 'currency', 'ecu_unit', 'revenue', 'created', 'updated']
 
     def get_artist_name(self, obj):
         return obj.track.artist.name if obj.track.artist else ''
@@ -99,16 +103,41 @@ class LicenseSerializer(serializers.ModelSerializer):
             logger.warning(f"[License] Duplicate license for club={club.id}, track={track.uuid}")
             raise serializers.ValidationError({"detail": "License already exists for this track."})
 
+        # Validate Extended Commercial Use is not used on PreClear tracks
+        ecu_requested = data.get('extended_commercial_use', False)
+        if ecu_requested and track.price:
+            raise serializers.ValidationError({"extended_commercial_use": "Extended Commercial Use is not available for PreClear tracks."})
+
         data['club'] = club
         data['track'] = track
         return data
 
     def create(self, validated_data):
+        club = validated_data['club']
+        track = validated_data['track']
+        ecu_requested = validated_data.get('extended_commercial_use', False)
+
+        # Determine tier and price from track
+        if track.price:
+            tier = 'PreClear'
+            price = track.get_price(club.user, 'single_use')
+        else:
+            tier = 'ArtistPromo'
+            price = Decimal('0')
+
+        # Calculate ECU unit
+        ecu_unit = settings.ECU_UNIT_PRICE if ecu_requested else Decimal('0')
+
         try:
             license_obj = License.objects.create(
-                club=validated_data['club'],
-                track=validated_data['track'],
+                club=club,
+                track=track,
                 status=License.STATUS_PENDING,
+                tier=tier,
+                extended_commercial_use=ecu_requested,
+                price=price,
+                currency=track.currency,
+                ecu_unit=ecu_unit,
             )
         except IntegrityError:
             raise serializers.ValidationError({"detail": "License already exists for this track."})
