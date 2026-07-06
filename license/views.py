@@ -1,8 +1,10 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 from django.conf import settings
+from django.http import HttpResponse
+import csv
 
 from license.models import License
 from license.serializers import LicenseSerializer
@@ -93,3 +95,51 @@ class LicenseViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(license_obj)
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='report', permission_classes=[IsAdminUser])
+    def report(self, request):
+        """
+        Generate CSV report of licenses for accounting.
+        Staff-only access. Filters by month/year query params.
+
+        URL: GET /api/v1/my-club/licenses/report/?month=4&year=2026
+        """
+        month = request.query_params.get('month')
+        year = request.query_params.get('year')
+
+        # Get all licenses, join related data efficiently
+        qs = License.objects.select_related('club', 'track', 'track__artist')
+
+        # Filter by month/year if provided
+        if month and year:
+            qs = qs.filter(created__month=month, created__year=year)
+
+        # Create HTTP response with CSV content type
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="licenses-{year}-{month}.csv"'
+
+        # Create CSV writer that writes to the response object
+        writer = csv.writer(response)
+
+        # Write header row matching PDF format
+        writer.writerow(['Transaction Date', 'Club Name', 'Artist Name', 'Track Title',
+                         'ISRC', 'Tier', 'Extended Commercial Use', 'Currency',
+                         'Price', 'ECU Unit', 'Revenue'])
+
+        # Write data row for each license
+        for lic in qs:
+            writer.writerow([
+                lic.created.date(),
+                lic.club.club_name,
+                lic.track.artist.name if lic.track.artist else '',
+                lic.track.name,
+                lic.track.isrc,
+                lic.tier,
+                lic.extended_commercial_use,
+                lic.currency,
+                lic.price,
+                lic.ecu_unit,
+                lic.revenue,
+            ])
+
+        return response
