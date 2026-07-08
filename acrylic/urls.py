@@ -60,7 +60,8 @@ router.register('aims/similarity-video-upload', aims_views.SimilarityVideoUpload
 router.register('aims/similarity-video-search', aims_views.SimilarityVideoSearchViewSet, basename='aims-similarity-video-search')
 router.register('aims/similarity-video', aims_views.SimilarityVideoViewSet, basename='aims-similarity-video')
 
-# licenses
+# club favorites and licenses
+router.register('my-club/favorites', club_views.ClubFavoritesViewSet, basename='club-favorites')
 router.register('my-club/licenses', license_views.LicenseViewSet, basename='license')
 
 # buyer account
