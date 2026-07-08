@@ -116,6 +116,10 @@ urlpatterns = [
 
         # Application
         path('aims/download-url/', aims_views.AimsDownloadUrlView.as_view(), name='aims_download_url'),
+        path('aims/video-multipart/initiate/', aims_views.AimsVideoMultipartInitiateView.as_view(), name='aims_video_multipart_initiate'),
+        path('aims/video-multipart/presign-parts/', aims_views.AimsVideoMultipartPresignPartsView.as_view(), name='aims_video_multipart_presign_parts'),
+        path('aims/video-multipart/complete/', aims_views.AimsVideoMultipartCompleteView.as_view(), name='aims_video_multipart_complete'),
+        path('aims/video-multipart/abort/', aims_views.AimsVideoMultipartAbortView.as_view(), name='aims_video_multipart_abort'),
 
         path('', include(router.urls)),
 
