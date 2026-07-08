@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     'catalog',
     'chartmetric',
     'spotify',
+    'aims',
     'buyer',
     'club',
     'label',

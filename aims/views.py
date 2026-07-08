@@ -6,6 +6,7 @@ import re
 from uuid import uuid4
 from urllib.parse import quote, unquote, urlparse
 from django.conf import settings
+from django.utils import timezone
 
 from rest_framework.viewsets import ViewSet
 from rest_framework.response import Response
@@ -18,6 +19,7 @@ from rest_framework.views import APIView
 
 import boto3
 
+from aims.models import AimsVideoMultipartUpload
 from catalog.models import Track
 from spotify.engine import spotify_client
 from chartmetric.dummy import (
@@ -115,6 +117,73 @@ def _s3_client():
         kwargs["aws_access_key_id"] = access_key
         kwargs["aws_secret_access_key"] = secret_key
     return boto3.client("s3", **kwargs)
+
+
+def _s3_bucket_name():
+    return getattr(settings, "AWS_STORAGE_BUCKET_NAME", "") or ""
+
+
+def _sanitize_s3_filename(filename: str) -> str:
+    raw = filename.strip() if isinstance(filename, str) else ""
+    raw = raw.split("/")[-1].split("\\")[-1].strip()
+    if not raw:
+        raw = "video.mp4"
+    return re.sub(r"[^A-Za-z0-9._ -]+", "_", raw)[:200]
+
+
+class AimsVideoMultipartInitiateSerializer(serializers.Serializer):
+    filename = serializers.CharField(required=True, allow_blank=False, trim_whitespace=True, max_length=255)
+    content_type = serializers.CharField(required=False, allow_blank=True, trim_whitespace=True, max_length=127)
+    size_bytes = serializers.IntegerField(required=True, min_value=1)
+
+    def validate(self, attrs):
+        content_type = attrs.get("content_type") or "application/octet-stream"
+        filename = attrs["filename"]
+        max_bytes = getattr(settings, "AIMS_VIDEO_MULTIPART_MAX_BYTES", 60 * 1024 * 1024)
+        if attrs["size_bytes"] > max_bytes:
+            raise serializers.ValidationError({"size_bytes": f"Video must be {max_bytes} bytes or smaller."})
+        if content_type != "video/mp4" and not filename.lower().endswith(".mp4"):
+            raise serializers.ValidationError({"content_type": "Only MP4 videos are supported."})
+        attrs["content_type"] = content_type
+        attrs["filename"] = _sanitize_s3_filename(filename)
+        return attrs
+
+
+class AimsVideoMultipartPresignSerializer(serializers.Serializer):
+    upload_id = serializers.UUIDField(required=True)
+    part_numbers = serializers.ListField(
+        child=serializers.IntegerField(min_value=1, max_value=10000),
+        min_length=1,
+        max_length=1000,
+    )
+
+    def validate_part_numbers(self, value):
+        deduped = sorted(set(value))
+        if len(deduped) != len(value):
+            raise serializers.ValidationError("Part numbers must be unique.")
+        return deduped
+
+
+class AimsVideoMultipartCompletePartSerializer(serializers.Serializer):
+    part_number = serializers.IntegerField(min_value=1, max_value=10000)
+    etag = serializers.CharField(required=True, allow_blank=False, trim_whitespace=True, max_length=255)
+
+
+class AimsVideoMultipartCompleteSerializer(serializers.Serializer):
+    upload_id = serializers.UUIDField(required=True)
+    parts = AimsVideoMultipartCompletePartSerializer(many=True)
+    page = serializers.IntegerField(required=False, min_value=1, default=1)
+    page_size = serializers.IntegerField(required=False, min_value=1, max_value=100, default=30)
+
+    def validate_parts(self, value):
+        numbers = [part["part_number"] for part in value]
+        if len(numbers) != len(set(numbers)):
+            raise serializers.ValidationError("Part numbers must be unique.")
+        return sorted(value, key=lambda part: part["part_number"])
+
+
+class AimsVideoMultipartAbortSerializer(serializers.Serializer):
+    upload_id = serializers.UUIDField(required=True)
 
 
 class AimsDownloadUrlInputSerializer(serializers.Serializer):
@@ -939,23 +1008,64 @@ class SimilarityVideoBaseViewSet(ViewSet):
     parser_classes = (MultiPartParser, FormParser, JSONParser)
 
     def _upload_video_to_aims(self, request, request_id, video_file):
+        if not video_file:
+            logger.warning("[aims.similarity-video] request_id=%s missing video_file", request_id)
+            return Response({"detail": "video_file is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        return self._post_video_stream_to_aims(
+            request=request,
+            request_id=request_id,
+            fileobj=video_file,
+            filename=getattr(video_file, "name", "video"),
+            content_type=getattr(video_file, "content_type", "application/octet-stream"),
+            size_bytes=getattr(video_file, "size", None),
+            source="request",
+        )
+
+    def _upload_s3_video_to_aims(self, request, request_id, upload_record):
+        bucket = _s3_bucket_name()
+        if not bucket:
+            return Response({"detail": "AWS_STORAGE_BUCKET_NAME is not configured."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        try:
+            s3_object = _s3_client().get_object(Bucket=bucket, Key=upload_record.s3_key)
+        except Exception:
+            logger.exception(
+                "[aims.similarity-video] request_id=%s s3_get_failed upload_id=%s key=%s",
+                request_id,
+                upload_record.uuid,
+                upload_record.s3_key,
+            )
+            return Response({"detail": "Uploaded video could not be read from S3."}, status=status.HTTP_502_BAD_GATEWAY)
+
+        body = s3_object["Body"]
+        try:
+            return self._post_video_stream_to_aims(
+                request=request,
+                request_id=request_id,
+                fileobj=body,
+                filename=upload_record.filename,
+                content_type=upload_record.content_type,
+                size_bytes=upload_record.size_bytes,
+                source="s3",
+            )
+        finally:
+            close = getattr(body, "close", None)
+            if callable(close):
+                close()
+
+    def _post_video_stream_to_aims(self, request, request_id, fileobj, filename, content_type, size_bytes, source):
         user_id = getattr(getattr(request, "user", None), "id", None)
-        filename = getattr(video_file, "name", "") if video_file else ""
-        content_type = getattr(video_file, "content_type", "") if video_file else ""
-        size_bytes = getattr(video_file, "size", None) if video_file else None
 
         logger.info(
-            "[aims.similarity-video] request_id=%s start user_id=%s filename=%s content_type=%s size_bytes=%s",
+            "[aims.similarity-video] request_id=%s start source=%s user_id=%s filename=%s content_type=%s size_bytes=%s",
             request_id,
+            source,
             user_id,
             filename,
             content_type,
             size_bytes,
         )
-
-        if not video_file:
-            logger.warning("[aims.similarity-video] request_id=%s missing video_file", request_id)
-            return Response({"detail": "video_file is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         aims_upload_url = "https://api.aimsapi.com/v1/upload"
         headers = {
@@ -965,9 +1075,9 @@ class SimilarityVideoBaseViewSet(ViewSet):
         }
         files = {
             "file": (
-                getattr(video_file, "name", "video"),
-                video_file,
-                getattr(video_file, "content_type", "application/octet-stream"),
+                filename,
+                fileobj,
+                content_type,
             )
         }
 
@@ -1196,6 +1306,214 @@ class SimilarityVideoViewSet(SimilarityVideoBaseViewSet):
         if isinstance(search_result, Response):
             return search_result
         return Response(search_result["payload"], status=search_result["status_code"])
+
+
+class AimsVideoMultipartBaseView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_upload_record(self, request, upload_id):
+        try:
+            return AimsVideoMultipartUpload.objects.get(uuid=upload_id, user=request.user)
+        except AimsVideoMultipartUpload.DoesNotExist:
+            return None
+
+
+class AimsVideoMultipartInitiateView(AimsVideoMultipartBaseView):
+    """
+    Start an S3 multipart upload for an AIMS video search.
+
+    POST /api/v1/aims/video-multipart/initiate/
+    Body: { filename, content_type, size_bytes }
+    """
+
+    def post(self, request):
+        serializer = AimsVideoMultipartInitiateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        bucket = _s3_bucket_name()
+        if not bucket:
+            return Response({"detail": "AWS_STORAGE_BUCKET_NAME is not configured."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        data = serializer.validated_data
+        upload_uuid = uuid4()
+        key = f"aims-video-uploads/{request.user.id}/{upload_uuid.hex}/{data['filename']}"
+        try:
+            multipart = _s3_client().create_multipart_upload(
+                Bucket=bucket,
+                Key=key,
+                ContentType=data["content_type"],
+            )
+        except Exception:
+            logger.exception("[aims.video-multipart] initiate_failed user_id=%s key=%s", request.user.id, key)
+            return Response({"detail": "Could not start S3 multipart upload."}, status=status.HTTP_502_BAD_GATEWAY)
+
+        upload_record = AimsVideoMultipartUpload.objects.create(
+            uuid=upload_uuid,
+            user=request.user,
+            s3_key=key,
+            s3_upload_id=multipart["UploadId"],
+            filename=data["filename"],
+            content_type=data["content_type"],
+            size_bytes=data["size_bytes"],
+        )
+        part_size = max(5 * 1024 * 1024, getattr(settings, "AIMS_VIDEO_MULTIPART_PART_BYTES", 8 * 1024 * 1024))
+        return Response(
+            {
+                "upload_id": str(upload_record.uuid),
+                "part_size": part_size,
+                "expires_in": getattr(settings, "AIMS_VIDEO_MULTIPART_URL_EXPIRE_SECONDS", 3600),
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class AimsVideoMultipartPresignPartsView(AimsVideoMultipartBaseView):
+    """
+    Mint presigned S3 upload_part URLs for a pending AIMS video upload.
+
+    POST /api/v1/aims/video-multipart/presign-parts/
+    Body: { upload_id, part_numbers: [1, 2, ...] }
+    """
+
+    def post(self, request):
+        serializer = AimsVideoMultipartPresignSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        upload_record = self.get_upload_record(request, serializer.validated_data["upload_id"])
+        if not upload_record:
+            return Response({"detail": "Upload not found."}, status=status.HTTP_404_NOT_FOUND)
+        if upload_record.status != AimsVideoMultipartUpload.Status.INITIATED:
+            return Response({"detail": "Upload is not accepting parts."}, status=status.HTTP_409_CONFLICT)
+
+        bucket = _s3_bucket_name()
+        expires_in = getattr(settings, "AIMS_VIDEO_MULTIPART_URL_EXPIRE_SECONDS", 3600)
+        s3 = _s3_client()
+        try:
+            parts = [
+                {
+                    "part_number": part_number,
+                    "url": s3.generate_presigned_url(
+                        ClientMethod="upload_part",
+                        Params={
+                            "Bucket": bucket,
+                            "Key": upload_record.s3_key,
+                            "UploadId": upload_record.s3_upload_id,
+                            "PartNumber": part_number,
+                        },
+                        ExpiresIn=expires_in,
+                    ),
+                }
+                for part_number in serializer.validated_data["part_numbers"]
+            ]
+        except Exception:
+            logger.exception("[aims.video-multipart] presign_failed upload_id=%s", upload_record.uuid)
+            return Response({"detail": "Could not presign S3 upload parts."}, status=status.HTTP_502_BAD_GATEWAY)
+
+        return Response({"parts": parts, "expires_in": expires_in}, status=status.HTTP_200_OK)
+
+
+class AimsVideoMultipartCompleteView(AimsVideoMultipartBaseView):
+    """
+    Complete the S3 multipart upload, synchronously upload it to AIMS, then run AIMS search.
+
+    POST /api/v1/aims/video-multipart/complete/
+    Body: { upload_id, parts: [{ part_number, etag }], page?, page_size? }
+    """
+
+    def post(self, request):
+        request_id = uuid4().hex[:12]
+        serializer = AimsVideoMultipartCompleteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        upload_record = self.get_upload_record(request, serializer.validated_data["upload_id"])
+        if not upload_record:
+            return Response({"detail": "Upload not found."}, status=status.HTTP_404_NOT_FOUND)
+        if upload_record.status != AimsVideoMultipartUpload.Status.INITIATED:
+            return Response({"detail": "Upload cannot be completed from its current state."}, status=status.HTTP_409_CONFLICT)
+
+        bucket = _s3_bucket_name()
+        parts = [
+            {"PartNumber": part["part_number"], "ETag": part["etag"]}
+            for part in serializer.validated_data["parts"]
+        ]
+        try:
+            _s3_client().complete_multipart_upload(
+                Bucket=bucket,
+                Key=upload_record.s3_key,
+                UploadId=upload_record.s3_upload_id,
+                MultipartUpload={"Parts": parts},
+            )
+        except Exception:
+            logger.exception("[aims.video-multipart] complete_failed upload_id=%s", upload_record.uuid)
+            upload_record.status = AimsVideoMultipartUpload.Status.FAILED
+            upload_record.error_message = "Could not complete S3 multipart upload."
+            upload_record.save(update_fields=["status", "error_message", "updated_at"])
+            return Response({"detail": "Could not complete S3 multipart upload."}, status=status.HTTP_502_BAD_GATEWAY)
+
+        upload_record.status = AimsVideoMultipartUpload.Status.PROCESSING
+        upload_record.save(update_fields=["status", "updated_at"])
+
+        helper = SimilarityVideoBaseViewSet()
+        upload_result = helper._upload_s3_video_to_aims(request, request_id, upload_record)
+        if isinstance(upload_result, Response):
+            upload_record.status = AimsVideoMultipartUpload.Status.FAILED
+            upload_record.error_message = str(upload_result.data.get("detail", "AIMS upload failed."))
+            upload_record.save(update_fields=["status", "error_message", "updated_at"])
+            return upload_result
+
+        upload_record.aims_hash = upload_result["hash"]
+        upload_record.save(update_fields=["aims_hash", "updated_at"])
+
+        search_result = helper._search_video_on_aims(
+            request,
+            request_id,
+            upload_result["hash"],
+            page=serializer.validated_data["page"],
+            page_size=serializer.validated_data["page_size"],
+        )
+        if isinstance(search_result, Response):
+            upload_record.status = AimsVideoMultipartUpload.Status.FAILED
+            upload_record.error_message = str(search_result.data.get("detail", "AIMS search failed."))
+            upload_record.save(update_fields=["status", "error_message", "updated_at"])
+            return search_result
+
+        upload_record.status = AimsVideoMultipartUpload.Status.FINISHED
+        upload_record.completed_at = timezone.now()
+        upload_record.save(update_fields=["status", "completed_at", "updated_at"])
+        return Response(search_result["payload"], status=search_result["status_code"])
+
+
+class AimsVideoMultipartAbortView(AimsVideoMultipartBaseView):
+    """
+    Abort a pending S3 multipart upload.
+
+    POST /api/v1/aims/video-multipart/abort/
+    Body: { upload_id }
+    """
+
+    def post(self, request):
+        serializer = AimsVideoMultipartAbortSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        upload_record = self.get_upload_record(request, serializer.validated_data["upload_id"])
+        if not upload_record:
+            return Response({"detail": "Upload not found."}, status=status.HTTP_404_NOT_FOUND)
+        if upload_record.status != AimsVideoMultipartUpload.Status.INITIATED:
+            return Response({"status": upload_record.status}, status=status.HTTP_200_OK)
+
+        try:
+            _s3_client().abort_multipart_upload(
+                Bucket=_s3_bucket_name(),
+                Key=upload_record.s3_key,
+                UploadId=upload_record.s3_upload_id,
+            )
+        except Exception:
+            logger.exception("[aims.video-multipart] abort_failed upload_id=%s", upload_record.uuid)
+            return Response({"detail": "Could not abort S3 multipart upload."}, status=status.HTTP_502_BAD_GATEWAY)
+
+        upload_record.status = AimsVideoMultipartUpload.Status.ABORTED
+        upload_record.save(update_fields=["status", "updated_at"])
+        return Response({"status": upload_record.status}, status=status.HTTP_200_OK)
 
 
 class AimsDownloadUrlView(APIView):
