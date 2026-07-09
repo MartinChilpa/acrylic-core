@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.urls import include, path
+from django.conf import settings
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView, TokenVerifyView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework import routers
@@ -152,6 +153,11 @@ urlpatterns = [
     path('aims-webhook/', aims_webhooks.AimsWebhookView.as_view(), name='aims_webhook'),
 
 ]
+
+if settings.DEBUG:
+    urlpatterns += [
+        path(f'api/{API_VERSION}/testing/seed-e2e-user/', account_views.seed_e2e_user, name='seed_e2e_user'),
+    ]
 
 
 #router = routers.SimpleRouter()

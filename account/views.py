@@ -1,9 +1,11 @@
 from rest_registration.api.views.register import RegisterView
 from rest_framework import viewsets, permissions, status, filters
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes, authentication_classes
 from rest_framework.response import Response
 from django.http import Http404
 from django.shortcuts import render
+from django.conf import settings
+from django.contrib.auth.models import User
 from common.api.pagination import StandardPagination
 from account.models import Account, Document
 from account.serializers import RegisterSerializer, AccountSerializer, AccountUpdateSerializer, DocumentSerializer
@@ -64,3 +66,23 @@ class DocumentViewSet(viewsets.ModelViewSet):
             return qs.get(uuid=uuid)
         except Document.DoesNotExist:
             raise Document.DoesNotExist
+
+
+@api_view(['POST'])
+@permission_classes([])
+@authentication_classes([])
+def seed_e2e_user(request):
+    """
+    Idempotently create/reset an e2e test user for Playwright test suites.
+    Only available in debug mode (local/CI environments).
+    """
+    if not settings.DEBUG:
+        return Response(status=404)
+
+    email = 'e2e-test@acrylic.la'
+    password = 'E2eTestPass123!'
+    user, _ = User.objects.get_or_create(username=email, defaults={'email': email})
+    user.set_password(password)
+    user.save()
+    Account.objects.get_or_create(user=user, defaults={'user_type': Account.UserType.CLUB})
+    return Response({'detail': f'Seeded e2e test user: {email}'})
