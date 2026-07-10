@@ -7,7 +7,7 @@ from django.test import TestCase, override_settings
 from django.contrib.auth import get_user_model
 
 from artist.models import Artist
-from catalog.models import Track
+from catalog.models import Distributor, Track
 from catalog.tasks import upload_track_to_aims
 from label.models import Label
 from rest_framework.test import APIClient
@@ -111,3 +111,15 @@ class CatalogIngestionAsyncTests(TestCase):
         self.assertEqual(payload["mode"], "async")
         self.assertEqual(len(payload["results"]), 2)
         self.assertEqual(payload["results"][0]["task_id"], "task-1")
+
+
+class DistributorModelTests(TestCase):
+    def test_whitelist_send_defaults_to_false(self):
+        distributor = Distributor.objects.create(
+            name="Martin Distributor",
+            contact_name="Martin",
+            email="martin@example.com",
+            whitelist_email="whitelist@example.com",
+        )
+
+        self.assertFalse(distributor.whitelist_send)

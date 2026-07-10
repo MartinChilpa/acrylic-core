@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
-from club.models import Club, Player
+from catalog.models import Track
+from club.models import Club, Player, TrackFavorite
 
 
 class TeamConfigSerializer(serializers.ModelSerializer):
@@ -21,6 +22,9 @@ class TeamConfigSerializer(serializers.ModelSerializer):
             "colors",
             "auth_promo",
             "sidenav",
+            "instagram_url",
+            "tiktok_url",
+            "youtube_url",
         )
 
     def get_team_name(self, obj: Club) -> str:
@@ -59,3 +63,39 @@ class TeamPlayerSerializer(serializers.ModelSerializer):
         if not obj.nationality:
             return None
         return str(obj.nationality)
+
+
+class TrackFavoriteSerializer(serializers.ModelSerializer):
+    track_uuid = serializers.SerializerMethodField()
+    track_id = serializers.SerializerMethodField()
+    isrc = serializers.SerializerMethodField()
+    track_name = serializers.SerializerMethodField()
+    artist_name = serializers.SerializerMethodField()
+    cover_image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TrackFavorite
+        fields = ("uuid", "track_id", "track_uuid", "isrc", "track_name", "artist_name", "cover_image", "created")
+
+    def get_track_uuid(self, obj: TrackFavorite) -> str:
+        return str(obj.track.uuid)
+
+    def get_track_id(self, obj: TrackFavorite):
+        return obj.track.id
+
+    def get_isrc(self, obj: TrackFavorite) -> str:
+        return obj.track.isrc or ""
+
+    def get_track_name(self, obj: TrackFavorite) -> str:
+        return obj.track.name or ""
+
+    def get_artist_name(self, obj: TrackFavorite) -> str:
+        return getattr(obj.track.artist, "name", "") or ""
+
+    def get_cover_image(self, obj: TrackFavorite) -> str:
+        if getattr(obj.track, "cover_image", None):
+            request = self.context.get("request")
+            if request is not None:
+                return request.build_absolute_uri(obj.track.cover_image.url)
+            return obj.track.cover_image.url
+        return ""

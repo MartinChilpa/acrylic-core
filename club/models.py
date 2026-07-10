@@ -5,6 +5,8 @@ from django.utils.text import slugify
 from django.db.models import Q
 from django_countries.fields import CountryField
 
+from catalog.models import Track
+
 # Create your models here.
 class Club(BaseModel):
     # Relación con la cuenta (quién administra este club)
@@ -28,6 +30,11 @@ class Club(BaseModel):
     colors = models.JSONField(null=True, blank=True, default=dict)
     auth_promo = models.JSONField(null=True, blank=True, default=dict)
     sidenav = models.JSONField(null=True, blank=True, default=dict)
+
+    # Social media URLs for whitelisting requests
+    instagram_url = models.URLField(max_length=255, blank=True, default="")
+    tiktok_url = models.URLField(max_length=255, blank=True, default="")
+    youtube_url = models.URLField(max_length=255, blank=True, default="")
 
     # Estado operativo
     is_active = models.BooleanField(default=True)
@@ -73,3 +80,20 @@ class Player(BaseModel):
 
     def __str__(self) -> str:
         return self.name
+
+
+class TrackFavorite(BaseModel):
+    club = models.ForeignKey(Club, related_name="track_favorites", on_delete=models.CASCADE)
+    track = models.ForeignKey(Track, related_name="club_favorites", on_delete=models.CASCADE)
+
+    class Meta:
+        ordering = ["-created"]
+        constraints = [
+            models.UniqueConstraint(fields=["club", "track"], name="unique_club_track_favorite")
+        ]
+        indexes = BaseModel.Meta.indexes + [
+            models.Index(fields=["club", "track"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.club_id}:{self.track_id}"

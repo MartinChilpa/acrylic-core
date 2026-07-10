@@ -32,6 +32,11 @@ class Distributor(BaseModel):
     def __str__(self):
         return self.name
 
+    def save(self, *args, **kwargs):
+        if self.whitelist_send is None:
+            self.whitelist_send = False
+        super().save(*args, **kwargs)
+
 
 class Genre(BaseModel):
     name = models.CharField(max_length=80)

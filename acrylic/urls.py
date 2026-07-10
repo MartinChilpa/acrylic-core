@@ -21,6 +21,7 @@ from aims import views as aims_views
 from aims import webhooks as aims_webhooks
 from label import views as label_views
 from club import views as club_views
+from license import views as license_views
 
 
 router = routers.DefaultRouter()
@@ -55,8 +56,13 @@ router.register('my-artist/prices', catalog_views.MyPriceViewSet)
 # aims
 router.register('aims/similarity',aims_views.SimilarityViewSet,  basename='aims-similarity')
 router.register('aims/similarity-prompt', aims_views.SimilarityPromptViewSet, basename='aims-similarity-prompt')
+router.register('aims/similarity-video-upload', aims_views.SimilarityVideoUploadViewSet, basename='aims-similarity-video-upload')
+router.register('aims/similarity-video-search', aims_views.SimilarityVideoSearchViewSet, basename='aims-similarity-video-search')
 router.register('aims/similarity-video', aims_views.SimilarityVideoViewSet, basename='aims-similarity-video')
 
+# club favorites and licenses
+router.register('my-club/favorites', club_views.ClubFavoritesViewSet, basename='club-favorites')
+router.register('my-club/licenses', license_views.LicenseViewSet, basename='license')
 
 # buyer account
 # tbd
@@ -111,6 +117,11 @@ urlpatterns = [
 
         # Application
         path('aims/download-url/', aims_views.AimsDownloadUrlView.as_view(), name='aims_download_url'),
+        path('aims/video-multipart/initiate/', aims_views.AimsVideoMultipartInitiateView.as_view(), name='aims_video_multipart_initiate'),
+        path('aims/video-multipart/presign-parts/', aims_views.AimsVideoMultipartPresignPartsView.as_view(), name='aims_video_multipart_presign_parts'),
+        path('aims/video-multipart/complete/', aims_views.AimsVideoMultipartCompleteView.as_view(), name='aims_video_multipart_complete'),
+        path('aims/video-multipart/abort/', aims_views.AimsVideoMultipartAbortView.as_view(), name='aims_video_multipart_abort'),
+
         path('', include(router.urls)),
 
         # Ingestion (CSV preview)

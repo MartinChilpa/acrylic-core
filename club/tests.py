@@ -1,6 +1,45 @@
+from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase
 
+from artist.models import Artist
+from catalog.models import Track
 from club.models import Club, Player
+
+
+class TrackFavoriteEndpointTests(APITestCase):
+    def test_toggle_and_list_track_favorites_for_club(self):
+        user = get_user_model().objects.create_user(username="club-admin", email="club@example.com", password="secret123")
+        club = Club.objects.create(club_name="CF Montreal", slug="cfmontreal", user=user)
+        artist = Artist.objects.create(name="Test Artist", country="ES")
+        track = Track.objects.create(artist=artist, isrc="USE100000001", name="Saved Track")
+
+        self.client.force_authenticate(user)
+
+        response = self.client.post(
+            "/api/v1/my-club/favorites/toggle/",
+            {"track_uuid": str(track.uuid)},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["is_favorited"])
+        self.assertEqual(club.track_favorites.count(), 1)
+
+        list_response = self.client.get("/api/v1/my-club/favorites/")
+        self.assertEqual(list_response.status_code, 200)
+        payload = list_response.json()
+        self.assertEqual(payload["count"], 1)
+        self.assertEqual(payload["results"][0]["track_uuid"], str(track.uuid))
+
+        remove_response = self.client.post(
+            "/api/v1/my-club/favorites/toggle/",
+            {"track_uuid": str(track.uuid)},
+            format="json",
+        )
+
+        self.assertEqual(remove_response.status_code, 200)
+        self.assertFalse(remove_response.json()["is_favorited"])
+        self.assertEqual(club.track_favorites.count(), 0)
 
 
 class TeamConfigEndpointTests(APITestCase):
@@ -49,6 +88,9 @@ class TeamConfigEndpointTests(APITestCase):
                     "text": "#E5E5E5",
                     "muted_text": "#A3A3A3",
                 },
+                "instagram_url": "",
+                "tiktok_url": "",
+                "youtube_url": "",
             },
         )
 
