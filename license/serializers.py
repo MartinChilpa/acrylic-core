@@ -18,27 +18,30 @@ class LicenseSerializer(serializers.ModelSerializer):
     isrc = serializers.CharField(source='track.isrc', read_only=True)
     track_name = serializers.CharField(source='track.name', read_only=True)
     artist_name = serializers.SerializerMethodField()
+    instagram_url = serializers.SerializerMethodField()
     cover_image = serializers.SerializerMethodField()
 
     class Meta:
         model = License
         fields = [
             'uuid', 'track', 'track_uuid', 'track_id', 'isrc', 'track_name',
-            'artist_name', 'cover_image', 'status', 'created', 'updated'
+            'artist_name', 'instagram_url', 'cover_image', 'status', 'created', 'updated'
         ]
         read_only_fields = ['uuid', 'status', 'created', 'updated']
 
     def get_artist_name(self, obj):
         return obj.track.artist.name if obj.track.artist else ''
 
+    def get_instagram_url(self, obj):
+        artist = obj.track.artist
+        return artist.instagram_url if artist else None
+
     def get_cover_image(self, obj):
         if not obj.track.cover_image:
             return None
-        # Return absolute URL for S3 or loc
         url = str(obj.track.cover_image)
         if url.startswith('http'):
             return url
-        # Build absolute URL for relative paths
         request = self.context.get('request')
         if request:
             return request.build_absolute_uri(obj.track.cover_image.url)
