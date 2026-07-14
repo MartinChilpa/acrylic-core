@@ -35,7 +35,7 @@ class LicenseViewSet(viewsets.ModelViewSet):
         # For other actions, filter by user's club
         user = self.request.user
         if hasattr(user, 'club') and user.club:
-            return License.objects.filter(club=user.club)
+            return License.objects.filter(club=user.club).select_related('track__artist')
         return License.objects.none()
 
     def create(self, request, *args, **kwargs):
