@@ -20,7 +20,7 @@ class AccountSerializer(serializers.ModelSerializer):
 class AccountUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Account
-        fields = ['billing_email', 'billing_details', 'country_code', 'phone', 'tax_id', 'failed_payment_notifications']
+        fields = ['billing_email', 'billing_details', 'country_code', 'phone', 'tax_id', 'failed_payment_notifications', 'language']
 
 
 class RegisterDoneSerializer(DefaultRegisterUserSerializer):
