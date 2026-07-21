@@ -8,9 +8,9 @@ from club.models import Club, Player
 
 class TrackFavoriteEndpointTests(APITestCase):
     def test_toggle_and_list_track_favorites_for_club(self):
-        user = get_user_model().objects.create_user(username="club-admin", email="club@example.com", password="secret123")
+        user = get_user_model().objects.create(username="club-admin", email="club@example.com")
         club = Club.objects.create(club_name="CF Montreal", slug="cfmontreal", user=user)
-        artist = Artist.objects.create(name="Test Artist", country="ES")
+        artist = Artist.objects.create(name="Test Artist", country="ES")                                    
         track = Track.objects.create(artist=artist, isrc="USE100000001", name="Saved Track")
 
         self.client.force_authenticate(user)
