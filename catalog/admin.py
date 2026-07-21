@@ -95,7 +95,7 @@ reload_chartmetric_ids.short_description = 'Reload IDs from Chartmetric'
 class TrackAdmin(ImportExportModelAdmin):
     queryset = Track.objects.select_related('artist', 'distributor')
     list_display = ['isrc', 'cover_preview', 'name', 'artist_link', 'distributor', 'duration_display', 'released', 'snippet_preview',
-                    'is_remix', 'is_instrumental', 'is_explicit', 'created', 'updated']
+                    'is_remix', 'is_instrumental', 'is_explicit', 'extended_commercial_use', 'created', 'updated']
     list_filter = ['released', 'distributor', 'is_remix', 'is_instrumental', 'created', 'updated']
     search_fields = ['uuid', 'isrc', 'name', 'artist__name']
     raw_id_fields = ['artist']
