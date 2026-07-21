@@ -8,6 +8,7 @@ from django.contrib.auth import get_user_model
 
 from artist.models import Artist
 from catalog.models import Distributor, Track
+from catalog.serializers import TrackSerializer
 from catalog.tasks import upload_track_to_aims
 from label.models import Label
 from rest_framework.test import APIClient
@@ -123,3 +124,23 @@ class DistributorModelTests(TestCase):
         )
 
         self.assertFalse(distributor.whitelist_send)
+
+
+class TrackCommercialUseTests(TestCase):
+    def test_extended_commercial_use_defaults_to_false_and_serializes(self):
+        with (
+            patch("artist.signals.load_spotify_artist_data", return_value=True),
+            patch("artist.signals.request_contract_signature_task.delay", return_value=None),
+        ):
+            artist = Artist.objects.create(name="Some Artist")
+
+        with (
+            patch("catalog.models.load_spotify_id.delay", return_value=None),
+            patch("catalog.models.load_chartmetric_ids.delay", return_value=None),
+        ):
+            track = Track.objects.create(artist=artist, isrc="USEE10001999", name="Track")
+
+        self.assertFalse(track.extended_commercial_use)
+        data = TrackSerializer(track).data
+        self.assertIn("extended_commercial_use", data)
+        self.assertFalse(data["extended_commercial_use"])
