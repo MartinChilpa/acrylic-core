@@ -18,6 +18,17 @@ User = get_user_model()
 #User.add_to_class('type', models.CharField(max_length=10, choices=UserType.choices, blank=True, null=True)
 
 
+def resolve_account_language(account):
+	"""
+	Resolve the language preference for an account.
+
+	Today: returns account.language directly.
+	Future: when ClubMembership model exists, this is where per-club default fallback logic
+	would live (e.g., account.language or account.club.default_language).
+	"""
+	return account.language
+
+
 # add get_profile() method
 """
 @property
@@ -44,6 +55,11 @@ class Account(BaseModel):
     phone = models.PositiveIntegerField(null=True, blank=True)
     tax_id = models.CharField(max_length=20, blank=True)
     failed_payment_notifications = models.BooleanField(default=True)
+    language = models.CharField(
+        max_length=2,
+        choices=[('en', 'English'), ('es', 'Español'), ('fr', 'Français')],
+        default='en'
+    )
     # contract signature
     contract_signed = models.DateTimeField(blank=True, null=True)
 
