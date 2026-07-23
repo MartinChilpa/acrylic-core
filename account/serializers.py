@@ -11,10 +11,30 @@ from account.models import Account, Document, Invitation
 User = get_user_model()
 
 
+class ClubSerializer(serializers.ModelSerializer):
+    country = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Club
+        fields = ['uuid', 'club_name', 'country', 'is_active']
+
+    def get_country(self, obj):
+        return str(obj.country.code) if obj.country else None
+
+
 class AccountSerializer(serializers.ModelSerializer):
+    club = serializers.SerializerMethodField()
+
     class Meta:
         model = Account
         exclude = ['id', 'user']
+
+    def get_club(self, obj):
+        try:
+            club = Club.objects.get(user=obj.user)
+            return ClubSerializer(club).data
+        except Club.DoesNotExist:
+            return None
 
 
 class AccountUpdateSerializer(serializers.ModelSerializer):
