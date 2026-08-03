@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 import tempfile
@@ -25,6 +26,8 @@ from artist.permissions import IsArtistOwner, IsTrackArtistOwner
 from artist.models import Artist
 from catalog.models import Distributor, Track, Genre, Price, SyncList, SyncListTrack
 from catalog.validators import validate_isrc
+
+logger = logging.getLogger(__name__)
 from catalog.serializers import (
     DistributorSerializer, TrackSerializer, MyTrackSerializer, MyTrackReadSerializer, 
     GenreSerializer, SyncListSerializer, SyncListTrackSerializer, PriceSerializer, MyPriceSerializer
@@ -390,6 +393,11 @@ class TrackViewSet(viewsets.ReadOnlyModelViewSet):
                     label_slug=label_slug,
                     artist_spotify_id=artist_spotify_id,
                     name=(item.get("name") or "").strip(),
+                )
+                logger.info(
+                    "save_to_s3_bulk: enqueued ingest_track_audio_from_url for track_id=%s task_id=%s",
+                    track.id,
+                    getattr(async_res, 'id', None),
                 )
                 enqueued += 1
                 results.append(

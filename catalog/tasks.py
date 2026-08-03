@@ -340,6 +340,8 @@ def ingest_track_audio_from_url(track_id, source_url, *, label_slug=None, artist
     """
     Track = apps.get_model("catalog", "Track")
 
+    logger.info("ingest_track_audio_from_url: received track_id=%s source_url=%r", track_id, source_url)
+
     try:
         track = Track.objects.select_related("artist", "artist__label").get(id=track_id)
     except Track.DoesNotExist:
@@ -386,7 +388,18 @@ def ingest_track_audio_from_url(track_id, source_url, *, label_slug=None, artist
                 track._artist_spotify_id = artist_spotify_id
                 track._label_fallback = label_slug
                 track.file_wav.save(os.path.basename(uploaded.name), uploaded, save=False)
+                logger.info(
+                    "ingest_track_audio_from_url: file_wav saved to file field track_id=%s file_wav=%r",
+                    track.id,
+                    track.file_wav.name,
+                )
                 track.save()
+                logger.info(
+                    "ingest_track_audio_from_url: track.save() complete track_id=%s file_wav=%r aims_status=%s",
+                    track.id,
+                    getattr(track.file_wav, 'name', None),
+                    getattr(track, 'aims_status', None),
+                )
 
                 # Enqueue enrichment for existing tracks (created elsewhere) as best-effort.
                 def _enqueue():
