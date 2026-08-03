@@ -247,6 +247,16 @@ class Track(BaseModel):
         load_ids = True if not self.id else False
         super(Track, self).save(*args, **kwargs)
 
+        logger.info(
+            "Track.save: id=%s skip_audio_tasks=%s load_ids=%s file_wav=%s file_mp3=%s aims_status=%s",
+            getattr(self, 'id', None),
+            skip_audio_tasks,
+            load_ids,
+            bool(getattr(self, 'file_wav', None) and getattr(self.file_wav, 'name', None)),
+            bool(getattr(self, 'file_mp3', None) and getattr(self.file_mp3, 'name', None)),
+            getattr(self, 'aims_status', None),
+        )
+
         # Ensure we always have a stable client id for AIMS correlation.
         # We use Track.id (autoincrement) as the consecutive numeric id.
         if self.id and self.aims_id is None:
@@ -257,6 +267,7 @@ class Track(BaseModel):
         if load_ids:
             try:
                 # Enqueue after commit so workers can see the newly-created row.
+                logger.info("Track.save: scheduling external-id enrichment for track_id=%s", self.id)
                 transaction.on_commit(lambda: load_spotify_id.delay(self.id, load_data=True))
                 transaction.on_commit(lambda: load_chartmetric_ids.delay(self.id))
             except Exception:
@@ -265,13 +276,17 @@ class Track(BaseModel):
 
         if not skip_audio_tasks:
             # Upload to AIMS once we have an audio file and haven't queued it yet.
-            if self.id and (self.file_wav or self.file_mp3) and self.aims_status == self.AimsStatus.PENDING:
+            has_audio = bool((self.file_wav and getattr(self.file_wav, 'name', None)) or (self.file_mp3 and getattr(self.file_mp3, 'name', None)))
+            logger.info("Track.save: audio_present=%s aims_status=%s for track_id=%s", has_audio, getattr(self, 'aims_status', None), self.id)
+
+            if self.id and has_audio and self.aims_status == self.AimsStatus.PENDING:
                 updated = type(self).objects.filter(pk=self.pk, aims_status=self.AimsStatus.PENDING).update(
                     aims_status=self.AimsStatus.PROCESSING
                 )
                 if updated:
                     try:
                         from catalog.tasks import upload_track_to_aims
+                        logger.info("Track.save: enqueuing upload_track_to_aims for track_id=%s", self.id)
                         transaction.on_commit(lambda: upload_track_to_aims.delay(self.id))
                     except Exception:
                         # Avoid breaking the main save path if Celery isn't available.
@@ -282,6 +297,7 @@ class Track(BaseModel):
             if self.id and (self.file_wav or self.file_mp3) and not self.waveform:
                 try:
                     from catalog.tasks import generate_track_waveform
+                    logger.info("Track.save: enqueuing generate_track_waveform for track_id=%s", self.id)
                     transaction.on_commit(lambda: generate_track_waveform.delay(self.id))
                 except Exception:
                     # Avoid breaking the main save path if Celery isn't available.
