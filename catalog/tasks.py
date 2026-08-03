@@ -386,7 +386,7 @@ def ingest_track_audio_from_url(track_id, source_url, *, label_slug=None, artist
                 track._artist_spotify_id = artist_spotify_id
                 track._label_fallback = label_slug
                 track.file_wav.save(os.path.basename(uploaded.name), uploaded, save=False)
-                Track.objects.filter(pk=track.pk).update(file_wav=track.file_wav.name, updated=timezone.now())
+                track.save()
 
                 # Enqueue enrichment for existing tracks (created elsewhere) as best-effort.
                 def _enqueue():
