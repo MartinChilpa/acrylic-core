@@ -408,13 +408,6 @@ class TrackViewSet(viewsets.ReadOnlyModelViewSet):
                         "created": created,
                         "task_id": task_id_container['task_id'],
                     }
-                    {
-                        "index": idx,
-                        "track_id": track.id,
-                        "track_uuid": str(track.uuid),
-                        "created": created,
-                        "task_id": getattr(async_res, "id", None),
-                    }
                 )
             except Exception as e:
                 errors.append({"index": idx, "detail": str(e)})
