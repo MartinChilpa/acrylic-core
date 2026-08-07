@@ -350,9 +350,8 @@ class TrackViewSet(viewsets.ReadOnlyModelViewSet):
         for idx, item in enumerate(tracks):
             try:
                 isrc = item["isrc"]
-                source_url = (item.get("mp3") or "").strip()
-                if not source_url:
-                    raise ValueError("mp3 is required")
+                source_url = (item.get("mp3") or item.get("source_url") or item.get("audio_url") or "").strip()
+                raw_keys = list(item.keys()) if isinstance(item, dict) else "not_dict"
 
                 artist_spotify_id = (item.get("artist_spotify_id") or "").strip()
                 artist_spotify_url = (item.get("artist_spotify_url") or "").strip()
@@ -384,6 +383,18 @@ class TrackViewSet(viewsets.ReadOnlyModelViewSet):
                 )
                 if not created and (item.get("name") or "").strip() and not (track.name or "").strip():
                     Track.objects.filter(pk=track.pk).update(name=(item.get("name") or "").strip(), updated=timezone.now())
+
+                logger.info(
+                    "SAVE_TRACKS_DEBUG: track_id=%s | source_url=%r | raw_keys=%s",
+                    track.id,
+                    source_url,
+                    raw_keys,
+                )
+                if not source_url:
+                    logger.warning(
+                        "SAVE_TRACKS_WARNING: No se encolará audio para track_id=%s porque source_url está vacío.",
+                        track.id,
+                    )
 
                 from catalog.tasks import ingest_track_audio_from_url
 
