@@ -340,6 +340,8 @@ def ingest_track_audio_from_url(track_id, source_url, *, label_slug=None, artist
     """
     Track = apps.get_model("catalog", "Track")
 
+    logger.info("ingest_track_audio_from_url: received track_id=%s source_url=%r", track_id, source_url)
+
     try:
         track = Track.objects.select_related("artist", "artist__label").get(id=track_id)
     except Track.DoesNotExist:
@@ -386,7 +388,28 @@ def ingest_track_audio_from_url(track_id, source_url, *, label_slug=None, artist
                 track._artist_spotify_id = artist_spotify_id
                 track._label_fallback = label_slug
                 track.file_wav.save(os.path.basename(uploaded.name), uploaded, save=False)
-                track.save()
+                logger.info(
+                    "ingest_track_audio_from_url: file_wav saved to file field track_id=%s file_wav=%r",
+                    track.id,
+                    track.file_wav.name,
+                )
+                track.save(skip_audio_tasks=True)
+                if track.file_wav and getattr(track.file_wav, 'name', None):
+                    Track.objects.filter(pk=track.pk).update(file_wav=track.file_wav.name, updated=timezone.now())
+                    track.refresh_from_db()
+                else:
+                    logger.warning(
+                        "ingest_track_audio_from_url: track.save(skip_audio_tasks=True) completed but file_wav still missing for track_id=%s",
+                        track.id,
+                    )
+
+                logger.info(
+                    "ingest_track_audio_from_url: track.save(skip_audio_tasks=True) complete track_id=%s file_wav=%r aims_status=%s waveform=%s",
+                    track.id,
+                    getattr(track.file_wav, 'name', None),
+                    getattr(track, 'aims_status', None),
+                    bool(getattr(track, 'waveform', None) and getattr(track.waveform, 'name', None)),
+                )
 
                 # Enqueue enrichment for existing tracks (created elsewhere) as best-effort.
                 def _enqueue():
@@ -400,6 +423,28 @@ def ingest_track_audio_from_url(track_id, source_url, *, label_slug=None, artist
                         pass
 
                 transaction.on_commit(_enqueue)
+
+                has_audio = bool(track.file_wav and getattr(track.file_wav, 'name', None))
+                has_waveform = bool(track.waveform and getattr(track.waveform, 'name', None))
+                if has_audio:
+                    def _enqueue_audio_tasks():
+                        try:
+                            if track.aims_status == track.AimsStatus.PENDING:
+                                upload_track_to_aims.delay(track.id)
+                            if not has_waveform:
+                                generate_track_waveform.delay(track.id)
+                        except Exception:
+                            logger.exception(
+                                "ingest_track_audio_from_url: failed to enqueue audio tasks for track_id=%s",
+                                track.id,
+                            )
+
+                    transaction.on_commit(_enqueue_audio_tasks)
+                else:
+                    logger.warning(
+                        "ingest_track_audio_from_url: no audio present after save for track_id=%s",
+                        track.id,
+                    )
 
         logger.info("ingest_track_audio_from_url: saved track_id=%s s3_key=%r", track.id, track.file_wav.name)
         return {"ok": True, "track_id": track.id, "track_uuid": str(track.uuid), "s3_key": track.file_wav.name}
