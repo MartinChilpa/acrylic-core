@@ -406,6 +406,13 @@ class TrackViewSet(viewsets.ReadOnlyModelViewSet):
                         "track_id": track.id,
                         "track_uuid": str(track.uuid),
                         "created": created,
+                        "task_id": task_id_container['task_id'],
+                    }
+                    {
+                        "index": idx,
+                        "track_id": track.id,
+                        "track_uuid": str(track.uuid),
+                        "created": created,
                         "task_id": getattr(async_res, "id", None),
                     }
                 )
