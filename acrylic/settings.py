@@ -2,6 +2,7 @@
 Django settings for acrylic project.
 """
 import os
+import ssl
 from datetime import timedelta
 from decouple import config
 import django_heroku
@@ -226,6 +227,15 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 ENVIRONMENT = config('ENVIRONMENT', 'DEV')
+
+# Celery SSL settings for Redis broker/backend
+CELERY_BROKER_USE_SSL = {
+    'ssl_cert_reqs': ssl.CERT_NONE,
+}
+CELERY_REDIS_BACKEND_USE_SSL = {
+    'ssl_cert_reqs': ssl.CERT_NONE,
+}
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
 # Email settings
 EMAIL_BACKEND = 'django_ses.SESBackend'
