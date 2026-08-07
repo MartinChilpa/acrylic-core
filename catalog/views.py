@@ -387,20 +387,33 @@ class TrackViewSet(viewsets.ReadOnlyModelViewSet):
 
                 from catalog.tasks import ingest_track_audio_from_url
 
-                async_res = ingest_track_audio_from_url.delay(
-                    track.id,
-                    source_url,
-                    label_slug=label_slug,
-                    artist_spotify_id=artist_spotify_id,
-                    name=(item.get("name") or "").strip(),
-                )
-                logger.info(
-                    "save_to_s3_bulk: enqueued ingest_track_audio_from_url for track_id=%s task_id=%s",
-                    track.id,
-                    getattr(async_res, 'id', None),
-                )
+                task_id_container = {'task_id': None}
+
+                def _enqueue_ingestion():
+                    async_res = ingest_track_audio_from_url.delay(
+                        track.id,
+                        source_url,
+                        label_slug=label_slug,
+                        artist_spotify_id=artist_spotify_id,
+                        name=(item.get("name") or "").strip(),
+                    )
+                    task_id_container['task_id'] = getattr(async_res, 'id', None)
+                    logger.info(
+                        "save_to_s3_bulk: scheduled ingest_track_audio_from_url for track_id=%s task_id=%s",
+                        track.id,
+                        task_id_container['task_id'],
+                    )
+
+                transaction.on_commit(_enqueue_ingestion)
                 enqueued += 1
                 results.append(
+                    {
+                        "index": idx,
+                        "track_id": track.id,
+                        "track_uuid": str(track.uuid),
+                        "created": created,
+                        "task_id": task_id_container['task_id'],
+                    }
                     {
                         "index": idx,
                         "track_id": track.id,
