@@ -609,6 +609,7 @@ def _simplify_aims_item(item, *, debug_moods=False):
     chartmetric_instagram_top_countries = None
     chartmetric_instagram_sports_fit_percent = 0
     track_virality = None
+    extended_commercial_use = False
     price_id = None
     price_uuid = None
     track_id = None
@@ -665,6 +666,7 @@ def _simplify_aims_item(item, *, debug_moods=False):
         cover_image = track.cover_image.url if track and track.cover_image else None
         track_name_track = track.name if track and track.name else None
         track_virality = getattr(track, "virality", None) if track else None
+        extended_commercial_use = bool(getattr(track, "extended_commercial_use", False)) if track else False
         price_id = getattr(track, "price_id", None) if track else None
         price_uuid = str(track.price.uuid) if track and getattr(track, "price", None) else None
         # Prefer our internal Artist name when we have it.
@@ -719,6 +721,7 @@ def _simplify_aims_item(item, *, debug_moods=False):
         "duration": duration,
         "release_year": release_year,
         "track_virality": track_virality,
+        "extended_commercial_use": extended_commercial_use,
         "price_id": price_id,
         "price_uuid": price_uuid,
         "moods": moods,

@@ -124,6 +124,30 @@ class AimsSimplifyTests(TestCase):
         self.assertEqual(out["price_id"], price.id)
         self.assertEqual(out["price_uuid"], str(price.uuid))
 
+    def test_simplify_includes_extended_commercial_use(self):
+        from aims.views import _simplify_aims_item
+
+        with (
+            patch("artist.signals.load_spotify_artist_data", return_value=True),
+            patch("artist.signals.request_contract_signature_task.delay", return_value=None),
+        ):
+            artist = Artist.objects.create(name="Some Artist")
+
+        with (
+            patch("catalog.models.load_spotify_id.delay", return_value=None),
+            patch("catalog.models.load_chartmetric_ids.delay", return_value=None),
+        ):
+            track = Track.objects.create(
+                artist=artist,
+                isrc="USEE10001998",
+                name="Track",
+                extended_commercial_use=True,
+            )
+
+        out = _simplify_aims_item({"id_client": track.aims_id, "track_name": "X", "artist_canonical": "Y"})
+        self.assertIn("extended_commercial_use", out)
+        self.assertTrue(out["extended_commercial_use"])
+
     @override_settings(CHARTMETRIC_USE_DUMMY_FALLBACKS=True)
     def test_simplify_applies_dummy_chartmetric_fallbacks_when_empty(self):
         from aims.views import _simplify_aims_item
