@@ -241,6 +241,8 @@ DUMMY_SIMILARITY_RESPONSE = {
         "track_virality": None,
         "price_id": None,
         "price_uuid": None,
+        "youtube_restriction": None,
+        "archival": None,
         "moods": ["happy"],
         "highlights": [],
         "cover_image": None,
@@ -276,6 +278,8 @@ DUMMY_PROMPT_TEST_RESPONSE = {
             "track_virality": None,
             "price_id": None,
             "price_uuid": None,
+            "youtube_restriction": None,
+            "archival": None,
             "moods": ["happy"],
             "highlights": [{"duration": 12.5, "offset": 30.0}],
             "cover_image": None,
@@ -298,6 +302,8 @@ DUMMY_PROMPT_TEST_RESPONSE = {
             "track_virality": None,
             "price_id": None,
             "price_uuid": None,
+            "youtube_restriction": None,
+            "archival": None,
             "moods": ["chill", "dreamy"],
             "highlights": [{"duration": 8.0, "offset": 75.0}],
             "cover_image": None,
@@ -320,6 +326,8 @@ DUMMY_PROMPT_TEST_RESPONSE = {
             "track_virality": None,
             "price_id": None,
             "price_uuid": None,
+            "youtube_restriction": None,
+            "archival": None,
             "moods": ["energetic"],
             "highlights": [{"duration": 10.0, "offset": 120.0}],
             "cover_image": None,
@@ -614,6 +622,8 @@ def _simplify_aims_item(item, *, debug_moods=False):
     price_uuid = None
     track_id = None
     track_uuid = None
+    youtube_restriction = None
+    archival = None
     if id_client is not None:
         qs = (
             Track.objects.select_related("artist", "price")
@@ -629,6 +639,8 @@ def _simplify_aims_item(item, *, debug_moods=False):
                 "virality",
                 "price_id",
                 "price__uuid",
+                "youtube_restriction",
+                "archival",
                 "artist__name",
                 "artist__country",
                 "artist__spotify_followers",
@@ -669,6 +681,8 @@ def _simplify_aims_item(item, *, debug_moods=False):
         extended_commercial_use = bool(getattr(track, "extended_commercial_use", False)) if track else False
         price_id = getattr(track, "price_id", None) if track else None
         price_uuid = str(track.price.uuid) if track and getattr(track, "price", None) else None
+        youtube_restriction = getattr(track, "youtube_restriction", None) if track else None
+        archival = getattr(track, "archival", None) if track else None
         # Prefer our internal Artist name when we have it.
         if track and getattr(track, "artist", None) and track.artist:
             if track.artist.name:
@@ -724,6 +738,8 @@ def _simplify_aims_item(item, *, debug_moods=False):
         "extended_commercial_use": extended_commercial_use,
         "price_id": price_id,
         "price_uuid": price_uuid,
+        "youtube_restriction": youtube_restriction,
+        "archival": archival,
         "moods": moods,
         "highlights": highlights,
         "cover_image": cover_image,
