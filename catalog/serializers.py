@@ -112,7 +112,8 @@ class TrackSerializer(serializers.ModelSerializer):
             'is_remix', 'is_instrumental', 'is_explicit', 'bpm',
             'language', 'lyrics', 'distributor', 'snippet', 'genres',
             'additional_main_artists', 'featured_artists', 'tags',
-            'price','extended_commercial_use','aims_id','aims_status','waveform','virality',
+            'price', 'youtube_restriction', 'archival', 'extended_commercial_use',
+            'aims_id', 'aims_status', 'waveform', 'virality',
         ]
 
     def get_genre_names(self, obj):

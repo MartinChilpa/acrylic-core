@@ -202,6 +202,8 @@ class Track(BaseModel):
 
     # cost
     price = models.ForeignKey(Price, related_name='tracks', blank=True, null=True, on_delete=models.SET_NULL)
+    youtube_restriction = models.CharField(max_length=255, blank=True, null=True)
+    archival = models.PositiveIntegerField(null=True, blank=True)
     extended_commercial_use = models.BooleanField(default=False)
 
     #moods

@@ -13,15 +13,30 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument('csv_file', type=str, help='The CSV file to import')
 
+    @staticmethod
+    def _normalize_header(value):
+        if value is None:
+            return ''
+        return value.strip().lower().replace('_', ' ').replace('-', ' ')
+
+    @staticmethod
+    def _find_value(row, *candidates):
+        normalized = {Command._normalize_header(key): key for key in row.keys() if key is not None}
+        for candidate in candidates:
+            key = normalized.get(Command._normalize_header(candidate))
+            if key is not None:
+                return row.get(key)
+        return None
+
     @transaction.atomic
     def handle(self, *args, **kwargs):
         csv_file_path = kwargs['csv_file']
-        
+
         with open(csv_file_path, 'r', encoding='utf-8') as csv_file:
             reader = csv.DictReader(csv_file)
-            
+
             for row in reader:
-                if row['SONG ISRC CODE']:
+                if row.get('SONG ISRC CODE'):
                     artist_name = row['ARTIST NAME']
                     artist, _ = Artist.objects.get_or_create(
                         name=artist_name,
@@ -39,11 +54,18 @@ class Command(BaseCommand):
                         bpm = int(row['BPM']) if row['BPM'] else None
                     except ValueError:
                         bpm = None
-                    
+
                     try:
                         duration = sum(x * int(t) for x, t in zip([60, 1], row['SONG LENGTH'].split(":"))) if row['SONG LENGTH'] else None
                     except ValueError:
                         duration = None
+
+                    youtube_restriction = self._find_value(row, 'Youtube Restriction', 'YOUTUBE RESTRICTION', 'youtube_restriction')
+                    archival_raw = self._find_value(row, 'Archival', 'ARCHIVAL', 'archival')
+                    try:
+                        archival = int(archival_raw) if archival_raw not in (None, '') else None
+                    except (TypeError, ValueError):
+                        archival = None
 
                     track, created = Track.objects.get_or_create(
                         isrc=row['SONG ISRC CODE'].strip(),
@@ -61,15 +83,22 @@ class Command(BaseCommand):
                             'bpm': bpm,
                             'language': language,
                             'lyrics': row['LYRICS'].strip() if row['LYRICS'] else '',
+                            'youtube_restriction': youtube_restriction.strip() if isinstance(youtube_restriction, str) and youtube_restriction.strip() else None,
+                            'archival': archival,
                         }
                     )
-                    
+
+                    if youtube_restriction is not None or archival_raw not in (None, ''):
+                        track.youtube_restriction = youtube_restriction.strip() if isinstance(youtube_restriction, str) and youtube_restriction.strip() else None
+                        track.archival = archival
+                        track.save(update_fields=['youtube_restriction', 'archival'])
+
                     if created:
                         # Handle file uploads if needed, e.g.:
                         #with open(row['UPLOAD WAV FILE // MUST MATCH NAME OF SONG EXACTLY'], 'rb') as f:
                         #    track.file_wav.save(row['UPLOAD WAV FILE // MUST MATCH NAME OF SONG EXACTLY'], File(f))
                         # Repeat for other file fields
-                        
+
                         # Add genres
                         genres = [row['GENRE 1'], row['GENRE 2'], row['GENRE 3']]
                         for genre_name in genres:

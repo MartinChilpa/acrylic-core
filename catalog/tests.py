@@ -3,6 +3,7 @@ from unittest.mock import patch
 import tempfile
 
 from django.core.files.base import ContentFile
+from django.core.management import call_command
 from django.test import TestCase, override_settings
 from django.contrib.auth import get_user_model
 
@@ -144,3 +145,29 @@ class TrackCommercialUseTests(TestCase):
         data = TrackSerializer(track).data
         self.assertIn("extended_commercial_use", data)
         self.assertFalse(data["extended_commercial_use"])
+
+    def test_import_tracks_maps_youtube_restriction_and_archival_columns(self):
+        with (
+            patch("artist.signals.load_spotify_artist_data", return_value=True),
+            patch("artist.signals.request_contract_signature_task.delay", return_value=None),
+            patch("catalog.models.load_spotify_id.delay", return_value=None),
+            patch("catalog.models.load_chartmetric_ids.delay", return_value=None),
+        ):
+            csv_content = """SONG ISRC CODE,ARTIST NAME,MAIN ARTIST HOMETOWN,YOUR SPOTIFY ARTIST PROFILE URL,SONG NAME,LANGUAGE(S),BPM,SONG LENGTH,Submitted on,IS IT A COVER OF SOMEONE ELSE'S SONG?,IS IT A REMIX?,IS IT AN INSTRUMENTAL?,EXPLICIT LYRICS?,LYRICS,GENRE 1,GENRE 2,GENRE 3,Youtube Restriction,Archival\nUSEE10001998,Some Artist,Paris,https://spotify.com/artist/1,Imported Song,English,120,3:30,2024/01/15,No,No,No,No,Test lyrics,Pop,, ,Restricted in some regions,2025\n"""
+            with tempfile.NamedTemporaryFile("w", suffix=".csv", delete=False, encoding="utf-8") as csv_file:
+                csv_file.write(csv_content)
+                csv_path = csv_file.name
+
+            try:
+                call_command("load_tracks", csv_path)
+            finally:
+                import os
+                os.unlink(csv_path)
+
+        track = Track.objects.get(isrc="USEE10001998")
+        self.assertEqual(track.youtube_restriction, "Restricted in some regions")
+        self.assertEqual(track.archival, 2025)
+
+        data = TrackSerializer(track).data
+        self.assertEqual(data["youtube_restriction"], "Restricted in some regions")
+        self.assertEqual(data["archival"], 2025)
