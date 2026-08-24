@@ -148,6 +148,31 @@ class AimsSimplifyTests(TestCase):
         self.assertIn("extended_commercial_use", out)
         self.assertTrue(out["extended_commercial_use"])
 
+    def test_simplify_includes_youtube_restriction_and_archival(self):
+        from aims.views import _simplify_aims_item
+
+        with (
+            patch("artist.signals.load_spotify_artist_data", return_value=True),
+            patch("artist.signals.request_contract_signature_task.delay", return_value=None),
+        ):
+            artist = Artist.objects.create(name="Some Artist")
+
+        with (
+            patch("catalog.models.load_spotify_id.delay", return_value=None),
+            patch("catalog.models.load_chartmetric_ids.delay", return_value=None),
+        ):
+            track = Track.objects.create(
+                artist=artist,
+                isrc="USEE10001999",
+                name="Track",
+                youtube_restriction="Restricted in some regions",
+                archival=2025,
+            )
+
+        out = _simplify_aims_item({"id_client": track.aims_id, "track_name": "X", "artist_canonical": "Y"})
+        self.assertEqual(out["youtube_restriction"], "Restricted in some regions")
+        self.assertEqual(out["archival"], 2025)
+
     @override_settings(CHARTMETRIC_USE_DUMMY_FALLBACKS=True)
     def test_simplify_applies_dummy_chartmetric_fallbacks_when_empty(self):
         from aims.views import _simplify_aims_item
