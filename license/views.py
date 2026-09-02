@@ -35,8 +35,30 @@ class LicenseViewSet(viewsets.ModelViewSet):
         # For other actions, filter by user's club
         user = self.request.user
         if hasattr(user, 'club') and user.club:
-            return License.objects.filter(club=user.club).select_related('track__artist')
+            queryset = License.objects.filter(club=user.club).select_related('track__artist')
+            # Only the list hides not-yet-downloaded licenses. Detail routes (including
+            # mark_downloaded) still have to reach a license before it is downloaded.
+            if self.action == 'list':
+                queryset = self._filter_by_downloaded(queryset)
+            return queryset
         return License.objects.none()
+
+    def _filter_by_downloaded(self, queryset):
+        """
+        The Licenses tab only shows licenses whose track was already downloaded, so the
+        list defaults to downloaded=True. `?downloaded=false` returns the pending ones and
+        `?downloaded=all` disables the filter for consumers that need the whole set.
+        """
+        raw = self.request.query_params.get('downloaded')
+        if raw is None:
+            return queryset.filter(downloaded=True)
+
+        value = raw.strip().lower()
+        if value == 'all':
+            return queryset
+        if value in ('false', '0', 'no'):
+            return queryset.filter(downloaded=False)
+        return queryset.filter(downloaded=True)
 
     def create(self, request, *args, **kwargs):
         """Create a new license request."""
@@ -54,6 +76,17 @@ class LicenseViewSet(viewsets.ModelViewSet):
             {"detail": f"License {uuid} deleted successfully."},
             status=status.HTTP_204_NO_CONTENT
         )
+
+    @action(detail=True, methods=['post'], url_path='mark-downloaded')
+    def mark_downloaded(self, request, uuid=None):
+        """
+        Flag the license as downloaded so it shows up in the club's Licenses tab.
+        Called by the frontend right after it triggers the track download.
+        """
+        license_obj = self.get_object()
+        license_obj.mark_downloaded()
+        serializer = self.get_serializer(license_obj)
+        return Response(serializer.data)
 
     @action(detail=True, methods=['patch'], url_path='status')
     def update_status(self, request, uuid=None):
