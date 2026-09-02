@@ -1,4 +1,6 @@
 from django.db import models
+from django.utils import timezone
+
 from common.models import BaseModel
 
 
@@ -19,6 +21,11 @@ class License(BaseModel):
     email_sent              = models.BooleanField(default=False)
     email_error             = models.TextField(blank=True)
 
+    # A license only shows up in the club's Licenses tab once the track has been
+    # downloaded, so creating it (whitelisting, emails) stays separate from listing it.
+    downloaded              = models.BooleanField(default=False)
+    downloaded_at           = models.DateTimeField(blank=True, null=True)
+
     class Meta:
         verbose_name = 'License'
         verbose_name_plural = 'Licenses'
@@ -29,3 +36,12 @@ class License(BaseModel):
 
     def __str__(self):
         return f"{self.club} — {self.track} ({self.status})"
+
+    def mark_downloaded(self):
+        """Flag the license as downloaded. Idempotent: keeps the first download time."""
+        if self.downloaded:
+            return False
+        self.downloaded = True
+        self.downloaded_at = timezone.now()
+        self.save(update_fields=['downloaded', 'downloaded_at', 'updated'])
+        return True

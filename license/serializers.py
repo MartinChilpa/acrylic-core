@@ -26,9 +26,10 @@ class LicenseSerializer(serializers.ModelSerializer):
         model = License
         fields = [
             'uuid', 'track', 'extended_commercial_use', 'track_uuid', 'track_id', 'isrc', 'track_name',
-            'artist_name', 'instagram_url', 'cover_image', 'status', 'created', 'updated'
+            'artist_name', 'instagram_url', 'cover_image', 'status', 'downloaded', 'downloaded_at',
+            'created', 'updated'
         ]
-        read_only_fields = ['uuid', 'status', 'created', 'updated']
+        read_only_fields = ['uuid', 'status', 'downloaded', 'downloaded_at', 'created', 'updated']
 
     def get_artist_name(self, obj):
         return obj.track.artist.name if obj.track.artist else ''

@@ -8,10 +8,10 @@ from license.tasks import build_whitelist_email
 
 @admin.register(License)
 class LicenseAdmin(admin.ModelAdmin):
-    list_display  = ['club', 'track', 'status', 'email_sent', 'created']
-    list_filter   = ['status', 'email_sent']
+    list_display  = ['club', 'track', 'status', 'email_sent', 'downloaded', 'downloaded_at', 'created']
+    list_filter   = ['status', 'email_sent', 'downloaded']
     search_fields = ['club__club_name', 'track__name', 'track__isrc']
-    readonly_fields = ['email_error', 'email_sent', 'created', 'updated', 'uuid']
+    readonly_fields = ['email_error', 'email_sent', 'downloaded_at', 'created', 'updated', 'uuid']
     raw_id_fields = ['club', 'track']
 
     actions = ['resend_whitelist_email']
