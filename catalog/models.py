@@ -106,6 +106,7 @@ class Price(BaseModel):
     name = models.CharField(max_length=150)
     description = models.TextField(blank=True)
     max_artist_tracks = models.PositiveIntegerField('Max tracks/artist', default=0, help_text='Max tracks allowed per artist with this price. Use 0 for unlimited')
+    price_temp = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     default = models.BooleanField(default=False)
     active = models.BooleanField(default=False)
     order = models.PositiveBigIntegerField(default=0)
