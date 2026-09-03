@@ -62,7 +62,7 @@ class TierPriceInline(admin.TabularInline):
 
 @admin.register(Price)
 class PriceAdmin(admin.ModelAdmin):
-    list_display = ['name', 'max_artist_tracks', 'default', 'active', 'order']
+    list_display = ['name', 'max_artist_tracks', 'price_temp', 'default', 'active', 'order']
     inlines = [TierPriceInline]
 
 

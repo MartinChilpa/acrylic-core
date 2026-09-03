@@ -639,6 +639,8 @@ def _simplify_aims_item(item, *, debug_moods=False):
                 "virality",
                 "price_id",
                 "price__uuid",
+                "price__description",
+                "price__price_temp",
                 "youtube_restriction",
                 "archival",
                 "artist__name",
@@ -681,6 +683,8 @@ def _simplify_aims_item(item, *, debug_moods=False):
         extended_commercial_use = bool(getattr(track, "extended_commercial_use", False)) if track else False
         price_id = getattr(track, "price_id", None) if track else None
         price_uuid = str(track.price.uuid) if track and getattr(track, "price", None) else None
+        price_description = getattr(track.price, 'description', None) if track and getattr(track, 'price', None) else None
+        price_temp = getattr(track.price, 'price_temp', None) if track and getattr(track, 'price', None) else None
         youtube_restriction = getattr(track, "youtube_restriction", None) if track else None
         archival = getattr(track, "archival", None) if track else None
         # Prefer our internal Artist name when we have it.
@@ -738,6 +742,8 @@ def _simplify_aims_item(item, *, debug_moods=False):
         "extended_commercial_use": extended_commercial_use,
         "price_id": price_id,
         "price_uuid": price_uuid,
+        "price_description": price_description,
+        "price_temp": price_temp,
         "youtube_restriction": youtube_restriction,
         "archival": archival,
         "moods": moods,
