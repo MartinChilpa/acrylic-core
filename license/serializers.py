@@ -18,6 +18,8 @@ class LicenseSerializer(serializers.ModelSerializer):
     track_id = serializers.IntegerField(source='track.id', read_only=True)
     isrc = serializers.CharField(source='track.isrc', read_only=True)
     track_name = serializers.CharField(source='track.name', read_only=True)
+    # License length in months (catalog_track.archival); null means it does not expire.
+    archival = serializers.IntegerField(source='track.archival', read_only=True, allow_null=True)
     artist_name = serializers.SerializerMethodField()
     instagram_url = serializers.SerializerMethodField()
     cover_image = serializers.SerializerMethodField()
@@ -26,7 +28,7 @@ class LicenseSerializer(serializers.ModelSerializer):
         model = License
         fields = [
             'uuid', 'track', 'extended_commercial_use', 'track_uuid', 'track_id', 'isrc', 'track_name',
-            'artist_name', 'instagram_url', 'cover_image', 'status', 'downloaded', 'downloaded_at',
+            'artist_name', 'instagram_url', 'cover_image', 'archival', 'status', 'downloaded', 'downloaded_at',
             'created', 'updated'
         ]
         read_only_fields = ['uuid', 'status', 'downloaded', 'downloaded_at', 'created', 'updated']
