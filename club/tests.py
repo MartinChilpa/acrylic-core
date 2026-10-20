@@ -1,3 +1,5 @@
+from urllib.parse import urlparse
+
 from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase
 
@@ -10,8 +12,21 @@ class TrackFavoriteEndpointTests(APITestCase):
     def test_toggle_and_list_track_favorites_for_club(self):
         user = get_user_model().objects.create(username="club-admin", email="club@example.com")
         club = Club.objects.create(club_name="CF Montreal", slug="cfmontreal", user=user)
-        artist = Artist.objects.create(name="Test Artist", country="ES")                                    
-        track = Track.objects.create(artist=artist, isrc="USE100000001", name="Saved Track")
+        artist = Artist.objects.create(
+            name="Test Artist",
+            country="ES",
+            spotify_followers=1200,
+            instagram_followers=800,
+            chartmetric_instagram_sports_fit_percent=42.5,
+        )
+        track = Track.objects.create(
+            artist=artist,
+            isrc="USE100000001",
+            name="Saved Track",
+            file_wav="tracks/saved-track.wav",
+            waveform="tracks/saved-track.json",
+            virality=67.5,
+        )
 
         self.client.force_authenticate(user)
 
@@ -30,6 +45,14 @@ class TrackFavoriteEndpointTests(APITestCase):
         payload = list_response.json()
         self.assertEqual(payload["count"], 1)
         self.assertEqual(payload["results"][0]["track_uuid"], str(track.uuid))
+        persisted_track = payload["results"][0]["track"]
+        self.assertEqual(persisted_track["track_uuid"], str(track.uuid))
+        self.assertTrue(urlparse(persisted_track["file_wav"]).path.endswith("tracks/saved-track.wav"))
+        self.assertTrue(urlparse(persisted_track["waveform"]).path.endswith("tracks/saved-track.json"))
+        self.assertEqual(persisted_track["spotify_followers"], 1200)
+        self.assertEqual(persisted_track["instagram_followers"], 800)
+        self.assertEqual(persisted_track["chartmetric_instagram_sports_fit_percent"], 42.5)
+        self.assertEqual(persisted_track["track_virality"], 67.5)
 
         remove_response = self.client.post(
             "/api/v1/my-club/favorites/toggle/",

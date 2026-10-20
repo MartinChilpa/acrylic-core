@@ -432,3 +432,260 @@ heroku run python manage.py createsuperuser
 
 - **Error Tracking**: Sentry integration for error monitoring
 - **Logs**: Heroku logs for application monitoring
+
+
+# Manual de integración de búsquedas AIMS
+
+Este documento describe los endpoints AIMS expuestos por Acrylic. El backend actúa como proxy: conserva las credenciales de AIMS en el servidor, enriquece los resultados con datos del catálogo de Acrylic y devuelve un formato común al cliente.
+
+## Inicio rápido
+
+Base URL:
+
+- Producción: `https://platform.acrylic.la/api/v1`
+- Desarrollo: `http://127.0.0.1:8000/api/v1`
+
+Todos los endpoints de este documento requieren autenticación, excepto el webhook. Enviar el access token JWT en cada petición:
+
+```http
+Authorization: Bearer <access_token>
+```
+
+Las peticiones y respuestas JSON usan:
+
+```http
+Content-Type: application/json
+```
+
+Orden recomendado de integración:
+
+1. Implementar búsqueda por prompt.
+2. Implementar búsqueda por enlace con un solo endpoint para Spotify y YouTube.
+3. Implementar video en dos pasos: carga y búsqueda por `hash`.
+4. Agregar carga multipart únicamente para archivos que no convenga enviar a través del servidor web.
+
+## Resumen de endpoints
+
+| Método | Ruta | Uso |
+| --- | --- | --- |
+| `POST` | `/aims/similarity-prompt/` | Buscar mediante texto libre |
+| `POST` | `/aims/similarity/` | Buscar mediante enlace de Spotify o YouTube |
+| `POST` | `/aims/similarity/spotify/` | Alias explícito para Spotify |
+| `POST` | `/aims/similarity-video-upload/` | Subir video y obtener su `hash` |
+| `POST` | `/aims/similarity-video-search/` | Buscar mediante un `hash` de video |
+| `POST` | `/aims/similarity-video/` | Cargar y buscar video en una petición (compatibilidad) |
+| `POST` | `/aims/video-multipart/initiate/` | Iniciar una carga multipart a S3 |
+| `POST` | `/aims/video-multipart/presign-parts/` | Obtener URLs para las partes |
+| `POST` | `/aims/video-multipart/complete/` | Completar la carga y ejecutar la búsqueda |
+| `POST` | `/aims/video-multipart/abort/` | Cancelar una carga multipart |
+| `POST` | `/aims/download-url/` | Crear una URL temporal para descargar una pista |
+| `POST` | `/aims-webhook/` | Recibir el estado de procesamiento de AIMS; ruta no versionada |
+
+## Formato común de resultados
+
+Prompt, YouTube y video devuelven el siguiente contenedor:
+
+```json
+{
+  "count": 1,
+  "results": [
+    {
+      "id_client": 124,
+      "track_id": 31,
+      "track_uuid": "4fa8b8c7-6f53-4e70-92b1-5bf6cce2a0c1",
+      "track_name": "Example Track",
+      "artist_canonical": "Example Artist",
+      "artist_country_code2": "MX",
+      "match_score": 0.93,
+      "duration": 241,
+      "release_year": 2024,
+      "track_virality": 82.4,
+      "extended_commercial_use": false,
+      "price_id": 4,
+      "price_uuid": "65ac50a0-9c54-4b4e-b425-f2bc63239280",
+      "price_description": "Standard license",
+      "price_temp": 250.0,
+      "youtube_restriction": null,
+      "archival": null,
+      "moods": ["happy", "energetic"],
+      "highlights": [
+        {"duration": 12.5, "offset": 30.0}
+      ],
+      "cover_image": "https://example.com/cover.jpg",
+      "file_wav": "https://example.com/track.wav",
+      "file_mp3": "https://example.com/track.mp3",
+      "waveform": "https://example.com/waveform.json",
+      "waveform_url": "https://example.com/waveform.json",
+      "track_name_track": "Catalog Track Name",
+      "spotify_followers": 34412,
+      "instagram_followers": 45123,
+      "instagram_url": "https://instagram.com/example",
+      "youtube_followers": 32123,
+      "tiktok_followers": 14231,
+      "chartmetric_instagram_demographics": null,
+      "chartmetric_instagram_top_cities": null,
+      "chartmetric_instagram_top_countries": null,
+      "chartmetric_instagram_sports_fit_percent": 33.33
+    }
+  ]
+}
+```
+
+Los campos provenientes del catálogo pueden ser `null` o `0` cuando AIMS devuelve una pista que no se puede relacionar con `Track.aims_id`. `waveform` y `waveform_url` contienen el mismo valor por compatibilidad.
+
+## 1. Búsqueda por prompt
+
+`POST /aims/similarity-prompt/`
+
+Busca pistas a partir de una descripción en lenguaje natural.
+
+### Body
+
+| Campo | Tipo | Obligatorio | Default | Descripción |
+| --- | --- | --- | --- | --- |
+| `text` | string | Sí | — | Prompt de búsqueda |
+| `page` | integer | No | `1` | Página solicitada a AIMS |
+| `page_size` | integer | No | `50` | Cantidad solicitada a AIMS |
+
+`text` también se acepta como query parameter, aunque se recomienda enviarlo en JSON.
+
+```bash
+curl -X POST "$BASE_URL/aims/similarity-prompt/" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "indie pop alegre, femenino, para un anuncio de verano",
+    "page": 1,
+    "page_size": 20
+  }'
+```
+
+Respuesta exitosa: formato común de resultados. Si falta `text`, responde `400`:
+
+```json
+{"detail": "text is required"}
+```
+
+## 2. Búsqueda por enlace de Spotify o YouTube
+
+`POST /aims/similarity/`
+
+El mismo endpoint acepta uno de estos campos:
+
+| Campo | Tipo | Obligatorio | Descripción |
+| --- | --- | --- | --- |
+| `spotify_url` | string | Condicional | URL, URI o ID de una pista de Spotify |
+| `youtube_url` | string | Condicional | URL de un video de YouTube |
+| `page` | integer | No | Página; default `1` |
+| `page_size` | integer | No | Solo se aplica a Spotify; default `20` |
+
+Se debe enviar `spotify_url` o `youtube_url`. Si se envían ambos, Spotify tiene prioridad.
+
+### Spotify
+
+Formatos aceptados:
+
+- `https://open.spotify.com/track/<id>`
+- `spotify:track:<id>`
+- ID crudo de 10 a 40 caracteres alfanuméricos
+
+```bash
+curl -X POST "$BASE_URL/aims/similarity/" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "spotify_url": "https://open.spotify.com/track/6u6kH7V7Tx5xDJtF82vVw0",
+    "page": 1,
+    "page_size": 20
+  }'
+```
+
+La respuesta añade información de la pista semilla:
+
+```json
+{
+  "exists_in_db": true,
+  "track_uuid": "4fa8b8c7-6f53-4e70-92b1-5bf6cce2a0c1",
+  "spotify": {
+    "spotify_id": "6u6kH7V7Tx5xDJtF82vVw0",
+    "isrc": "MXF010700413",
+    "name": "Estos Celos",
+    "artist": "Vicente Fernandez",
+    "artists": ["Vicente Fernandez"],
+    "image": "https://i.scdn.co/image/example",
+    "url": "https://open.spotify.com/track/6u6kH7V7Tx5xDJtF82vVw0"
+  },
+  "count": 20,
+  "results": [],
+  "seed_track": {
+    "in_catalog": true,
+    "track": {}
+  },
+  "aims_status_code": 200
+}
+```
+
+`seed_track.track` usa el mismo esquema que cada elemento de `results` y añade `spotify_id`, `isrc` y `audience_sport_fit_percent`. Si la pista no está en el catálogo, `track` será `null`.
+
+También existe el alias `POST /aims/similarity/spotify/`, que exige `spotify_url` y devuelve la misma estructura.
+
+### YouTube
+
+```bash
+curl -X POST "$BASE_URL/aims/similarity/" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "youtube_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "page": 1
+  }'
+```
+
+Respuesta exitosa: formato común de resultados. En la implementación actual, YouTube usa un `page_size` fijo de `20`.
+
+Errores propios de este flujo:
+
+- `400`: falta `youtube_url` o el valor de Spotify no tiene formato válido.
+- `502`: falló Spotify, falló AIMS o AIMS devolvió una respuesta que no es JSON.
+- `504`: AIMS excedió el tiempo de espera.
+
+
+## Errores transversales
+
+| Estado | Significado |
+| --- | --- |
+| `400 Bad Request` | Falta un campo o su formato no es válido |
+| `401 Unauthorized` | JWT ausente, inválido o expirado |
+| `404 Not Found` | Recurso multipart inexistente para el usuario |
+| `409 Conflict` | Estado multipart incompatible con la operación |
+| `502 Bad Gateway` | Fallo de AIMS, Spotify o S3, o respuesta externa inválida |
+| `504 Gateway Timeout` | AIMS no respondió dentro del timeout |
+
+Los errores usan normalmente esta forma:
+
+```json
+{"detail": "Descripción del error"}
+```
+
+## Opciones de desarrollo
+
+Los endpoints de similitud aceptan `?dummy=1` para evitar llamadas a AIMS. Además, el prompt exacto `test` devuelve tres resultados ficticios. Estas opciones son provisionales y no deben formar parte del contrato de producción.
+
+`?debug_moods=1` imprime información de moods en el proceso del servidor y tampoco debe usarse como funcionalidad pública.
+
+## Configuración requerida en el backend
+
+```env
+AIMS_CLIENT_ID=...
+AIMS_API_SECRET=...
+AIMS_WEBHOOK_URL=https://api.example.com/aims-webhook/
+AIMS_WEBHOOK_SECRET=...
+SPOTIFY_CLIENT_ID=...
+SPOTIFY_CLIENT_SECRET=...
+AWS_STORAGE_BUCKET_NAME=...
+AWS_S3_REGION_NAME=...
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+```
+
+Para producción se recomienda configurar explícitamente el secret del webhook y deshabilitar los atajos `dummy`/`test` mediante una bandera de entorno o eliminarlos.

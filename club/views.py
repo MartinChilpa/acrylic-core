@@ -18,7 +18,11 @@ class ClubFavoritesViewSet(viewsets.GenericViewSet):
     def get_queryset(self):
         user = self.request.user
         if hasattr(user, "club") and user.club:
-            return TrackFavorite.objects.filter(club=user.club).select_related("track", "track__artist")
+            return TrackFavorite.objects.filter(club=user.club).select_related(
+                "track",
+                "track__artist",
+                "track__price",
+            )
         return TrackFavorite.objects.none()
 
     def list(self, request, *args, **kwargs):

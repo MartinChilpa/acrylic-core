@@ -66,6 +66,7 @@ class TeamPlayerSerializer(serializers.ModelSerializer):
 
 
 class TrackFavoriteSerializer(serializers.ModelSerializer):
+    track = serializers.SerializerMethodField()
     track_uuid = serializers.SerializerMethodField()
     track_id = serializers.SerializerMethodField()
     isrc = serializers.SerializerMethodField()
@@ -75,7 +76,68 @@ class TrackFavoriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TrackFavorite
-        fields = ("uuid", "track_id", "track_uuid", "isrc", "track_name", "artist_name", "cover_image", "created")
+        fields = (
+            "uuid",
+            "track_id",
+            "track_uuid",
+            "isrc",
+            "track_name",
+            "artist_name",
+            "cover_image",
+            "track",
+            "created",
+        )
+
+    def _file_url(self, value) -> str:
+        if not value:
+            return ""
+        url = value.url
+        request = self.context.get("request")
+        return request.build_absolute_uri(url) if request is not None else url
+
+    def get_track(self, obj: TrackFavorite) -> dict:
+        track = obj.track
+        artist = track.artist
+        price = track.price
+        price_temp = price.price_temp if price else None
+
+        return {
+            "uuid": str(track.uuid),
+            "track_id": track.id,
+            "track_uuid": str(track.uuid),
+            "isrc": track.isrc or "",
+            "track_name": track.name or "",
+            "name": track.name or "",
+            "artist_name": artist.name or "",
+            "artist_canonical": artist.name or "",
+            "artist_country_code2": str(artist.country) if artist.country else None,
+            "cover_image": self._file_url(track.cover_image),
+            "file_wav": self._file_url(track.file_wav),
+            "file_mp3": self._file_url(track.file_mp3),
+            "waveform": self._file_url(track.waveform),
+            "waveform_url": self._file_url(track.waveform),
+            "duration": int(track.duration / 1000) if track.duration else None,
+            "release_year": track.released.year if track.released else None,
+            "track_virality": track.virality,
+            "virality": track.virality,
+            "extended_commercial_use": track.extended_commercial_use,
+            "price_id": track.price_id,
+            "price_uuid": str(price.uuid) if price else None,
+            "price_temp": price_temp,
+            "price": price_temp,
+            "price_description": price.description if price else None,
+            "descripcion": price.description if price else None,
+            "youtube_restriction": track.youtube_restriction,
+            "archival": track.archival,
+            "spotify_followers": artist.spotify_followers,
+            "instagram_followers": artist.instagram_followers,
+            "youtube_followers": artist.youtube_followers,
+            "tiktok_followers": artist.tiktok_followers,
+            "chartmetric_instagram_demographics": artist.chartmetric_instagram_demographics,
+            "chartmetric_instagram_top_cities": artist.chartmetric_instagram_top_cities,
+            "chartmetric_instagram_top_countries": artist.chartmetric_instagram_top_countries,
+            "chartmetric_instagram_sports_fit_percent": artist.chartmetric_instagram_sports_fit_percent,
+        }
 
     def get_track_uuid(self, obj: TrackFavorite) -> str:
         return str(obj.track.uuid)
