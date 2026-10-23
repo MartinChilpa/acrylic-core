@@ -108,13 +108,14 @@ class TrackSerializer(serializers.ModelSerializer):
     class Meta:
         model = Track
         fields = [
-            'uuid', 'isrc', 'artist', 'name', 'duration', 'released', 'is_cover',
+            'uuid', 'isrc', 'artist', 'name', 'cover_image', 'duration', 'released', 'is_cover',
             'is_remix', 'is_instrumental', 'is_explicit', 'bpm',
             'language', 'lyrics', 'distributor', 'snippet', 'genres',
             'additional_main_artists', 'featured_artists', 'tags',
             'price', 'youtube_restriction', 'archival', 'extended_commercial_use',
             'aims_id', 'aims_status', 'waveform', 'virality',
         ]
+        read_only_fields = ['cover_image']
 
     def get_genre_names(self, obj):
         return [genre.name for genre in obj.genres.all()]
