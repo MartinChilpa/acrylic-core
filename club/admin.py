@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Club, Player
+from .models import Club, Player, TrackPublishedLink
 
 @admin.register(Club)
 class ClubAdmin(admin.ModelAdmin):
@@ -42,3 +42,11 @@ class PlayerAdmin(admin.ModelAdmin):
     search_fields = ["name", "club__club_name"]
     list_filter = ["club", "nationality", "is_active"]
     raw_id_fields = ["club"]
+
+
+@admin.register(TrackPublishedLink)
+class TrackPublishedLinkAdmin(admin.ModelAdmin):
+    list_display = ["track", "club", "platform", "url", "created"]
+    search_fields = ["track__name", "track__isrc", "club__club_name", "url"]
+    list_filter = ["platform", "club", "created"]
+    raw_id_fields = ["club", "track"]

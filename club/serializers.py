@@ -1,7 +1,8 @@
+from django.db import IntegrityError, transaction
 from rest_framework import serializers
 
 from catalog.models import Track
-from club.models import Club, Player, TrackFavorite
+from club.models import Club, Player, TrackFavorite, TrackPublishedLink
 
 
 class TeamConfigSerializer(serializers.ModelSerializer):
@@ -161,3 +162,78 @@ class TrackFavoriteSerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(obj.track.cover_image.url)
             return obj.track.cover_image.url
         return ""
+
+
+class TrackPublishedLinkSerializer(serializers.ModelSerializer):
+    track_uuid = serializers.SlugRelatedField(
+        source="track",
+        slug_field="uuid",
+        queryset=Track.objects.all(),
+    )
+    track_id = serializers.IntegerField(source="track.id", read_only=True)
+    track_name = serializers.CharField(source="track.name", read_only=True)
+    platform_display = serializers.CharField(source="get_platform_display", read_only=True)
+
+    class Meta:
+        model = TrackPublishedLink
+        fields = (
+            "uuid",
+            "track_uuid",
+            "track_id",
+            "track_name",
+            "platform",
+            "platform_display",
+            "url",
+            "created",
+            "updated",
+        )
+        read_only_fields = (
+            "uuid",
+            "track_id",
+            "track_name",
+            "platform_display",
+            "created",
+            "updated",
+        )
+
+    def validate(self, attrs):
+        request = self.context.get("request")
+        club = getattr(getattr(request, "user", None), "club", None)
+        if club is None:
+            raise serializers.ValidationError({"detail": "No club found for this user."})
+
+        track = attrs.get("track") or getattr(self.instance, "track", None)
+        url = attrs.get("url") or getattr(self.instance, "url", None)
+        if track is not None and url:
+            duplicate = TrackPublishedLink.objects.filter(
+                club=club,
+                track=track,
+                url=url,
+            )
+            if self.instance is not None:
+                duplicate = duplicate.exclude(pk=self.instance.pk)
+            if duplicate.exists():
+                raise serializers.ValidationError(
+                    {"url": "This published link already exists for this track."}
+                )
+
+        attrs["club"] = club
+        return attrs
+
+    def create(self, validated_data):
+        try:
+            with transaction.atomic():
+                return super().create(validated_data)
+        except IntegrityError:
+            raise serializers.ValidationError(
+                {"url": "This published link already exists for this track."}
+            )
+
+    def update(self, instance, validated_data):
+        try:
+            with transaction.atomic():
+                return super().update(instance, validated_data)
+        except IntegrityError:
+            raise serializers.ValidationError(
+                {"url": "This published link already exists for this track."}
+            )

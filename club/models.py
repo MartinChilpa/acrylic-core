@@ -97,3 +97,43 @@ class TrackFavorite(BaseModel):
 
     def __str__(self) -> str:
         return f"{self.club_id}:{self.track_id}"
+
+
+class TrackPublishedLink(BaseModel):
+    class Platform(models.TextChoices):
+        INSTAGRAM = "instagram", "Instagram"
+        TIKTOK = "tiktok", "TikTok"
+        YOUTUBE = "youtube", "YouTube"
+        YOUTUBE_SHORTS = "youtube_shorts", "YouTube Shorts"
+        FACEBOOK = "facebook", "Facebook"
+
+    club = models.ForeignKey(
+        Club,
+        related_name="published_track_links",
+        on_delete=models.CASCADE,
+    )
+    track = models.ForeignKey(
+        Track,
+        related_name="club_published_links",
+        on_delete=models.CASCADE,
+    )
+    platform = models.CharField(max_length=20, choices=Platform.choices)
+    url = models.URLField(max_length=2048)
+
+    class Meta:
+        ordering = ["platform", "-created"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["club", "track", "url"],
+                name="uniq_club_track_pub_url",
+            ),
+        ]
+        indexes = BaseModel.Meta.indexes + [
+            models.Index(
+                fields=["club", "track", "platform"],
+                name="club_pub_cl_tr_plat_idx",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.club_id}:{self.track_id}:{self.platform}"

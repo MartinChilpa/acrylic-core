@@ -5,7 +5,7 @@ from rest_framework.test import APITestCase
 
 from artist.models import Artist
 from catalog.models import Track
-from club.models import Club, Player
+from club.models import Club, Player, TrackPublishedLink
 
 
 class TrackFavoriteEndpointTests(APITestCase):
@@ -129,3 +129,158 @@ class TeamConfigEndpointTests(APITestCase):
         self.assertEqual(payload["players"][0]["name"], "Lionel Messi")
         self.assertEqual(payload["players"][0]["country_code2"], "AR")
         self.assertTrue(payload["players"][0]["id"].startswith("p_"))
+
+
+class TrackPublishedLinkEndpointTests(APITestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create(
+            username="published-links-club",
+            email="published-links@example.com",
+        )
+        self.club = Club.objects.create(
+            club_name="Published Links FC",
+            slug="published-links-fc",
+            user=self.user,
+        )
+        artist = Artist.objects.create(name="Published Artist", country="MX")
+        self.track = Track.objects.create(
+            artist=artist,
+            isrc="MXA012600001",
+            name="Published Track",
+        )
+        self.client.force_authenticate(self.user)
+
+    def test_create_multiple_links_and_list_them_grouped_by_platform(self):
+        endpoint = "/api/v1/my-club/published-links/"
+        first = self.client.post(
+            endpoint,
+            {
+                "track_uuid": str(self.track.uuid),
+                "platform": "instagram",
+                "url": "https://www.instagram.com/p/example-one/",
+            },
+            format="json",
+        )
+        second = self.client.post(
+            endpoint,
+            {
+                "track_uuid": str(self.track.uuid),
+                "platform": "instagram",
+                "url": "https://www.instagram.com/reel/example-two/",
+            },
+            format="json",
+        )
+
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(second.status_code, 201)
+        self.assertEqual(first.json()["track_uuid"], str(self.track.uuid))
+        self.assertEqual(self.club.published_track_links.count(), 2)
+
+        response = self.client.get(
+            endpoint,
+            {"track_uuid": str(self.track.uuid)},
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["count"], 2)
+        self.assertEqual(len(payload["by_platform"]["instagram"]), 2)
+        self.assertEqual(payload["by_platform"]["tiktok"], [])
+        self.assertEqual(payload["by_platform"]["youtube"], [])
+        self.assertEqual(payload["by_platform"]["youtube_shorts"], [])
+        self.assertEqual(payload["by_platform"]["facebook"], [])
+
+    def test_rejects_duplicate_url_for_same_club_and_track(self):
+        endpoint = "/api/v1/my-club/published-links/"
+        data = {
+            "track_uuid": str(self.track.uuid),
+            "platform": "youtube",
+            "url": "https://www.youtube.com/watch?v=example",
+        }
+
+        self.assertEqual(self.client.post(endpoint, data, format="json").status_code, 201)
+        duplicate = self.client.post(endpoint, data, format="json")
+
+        self.assertEqual(duplicate.status_code, 400)
+        self.assertIn("url", duplicate.json())
+
+    def test_links_are_isolated_between_clubs(self):
+        link = TrackPublishedLink.objects.create(
+            club=self.club,
+            track=self.track,
+            platform=TrackPublishedLink.Platform.TIKTOK,
+            url="https://www.tiktok.com/@club/video/123",
+        )
+        other_user = get_user_model().objects.create(
+            username="other-published-links-club",
+            email="other-published-links@example.com",
+        )
+        other_club = Club.objects.create(
+            club_name="Other Links FC",
+            slug="other-links-fc",
+            user=other_user,
+        )
+        self.client.force_authenticate(other_user)
+
+        own_list = self.client.get(
+            "/api/v1/my-club/published-links/",
+            {"track_uuid": str(self.track.uuid)},
+        )
+        foreign_detail = self.client.get(
+            f"/api/v1/my-club/published-links/{link.uuid}/"
+        )
+        create_for_same_track = self.client.post(
+            "/api/v1/my-club/published-links/",
+            {
+                "track_uuid": str(self.track.uuid),
+                "platform": "tiktok",
+                "url": "https://www.tiktok.com/@club/video/123",
+            },
+            format="json",
+        )
+
+        self.assertEqual(own_list.status_code, 200)
+        self.assertEqual(own_list.json()["count"], 0)
+        self.assertEqual(foreign_detail.status_code, 404)
+        self.assertEqual(create_for_same_track.status_code, 201)
+        self.assertEqual(other_club.published_track_links.count(), 1)
+
+    def test_patch_delete_and_input_validation(self):
+        link = TrackPublishedLink.objects.create(
+            club=self.club,
+            track=self.track,
+            platform=TrackPublishedLink.Platform.FACEBOOK,
+            url="https://www.facebook.com/posts/old",
+        )
+        detail = f"/api/v1/my-club/published-links/{link.uuid}/"
+
+        patched = self.client.patch(
+            detail,
+            {"url": "https://www.facebook.com/posts/new"},
+            format="json",
+        )
+        invalid_platform = self.client.post(
+            "/api/v1/my-club/published-links/",
+            {
+                "track_uuid": str(self.track.uuid),
+                "platform": "spotify",
+                "url": "https://open.spotify.com/track/example",
+            },
+            format="json",
+        )
+        invalid_url = self.client.post(
+            "/api/v1/my-club/published-links/",
+            {
+                "track_uuid": str(self.track.uuid),
+                "platform": "instagram",
+                "url": "not-a-url",
+            },
+            format="json",
+        )
+        deleted = self.client.delete(detail)
+
+        self.assertEqual(patched.status_code, 200)
+        self.assertEqual(patched.json()["url"], "https://www.facebook.com/posts/new")
+        self.assertEqual(invalid_platform.status_code, 400)
+        self.assertEqual(invalid_url.status_code, 400)
+        self.assertEqual(deleted.status_code, 204)
+        self.assertFalse(TrackPublishedLink.objects.filter(pk=link.pk).exists())
