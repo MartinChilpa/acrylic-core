@@ -104,6 +104,7 @@ class TrackSerializer(serializers.ModelSerializer):
     tags = TagSerializer(many=True)
     genres = GenreSerializer(many=True)
     price = serializers.SlugRelatedField(slug_field='uuid', read_only=True)
+    preview_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Track
@@ -113,16 +114,29 @@ class TrackSerializer(serializers.ModelSerializer):
             'language', 'lyrics', 'distributor', 'snippet', 'genres',
             'additional_main_artists', 'featured_artists', 'tags',
             'price', 'youtube_restriction', 'archival', 'extended_commercial_use',
-            'aims_id', 'aims_status', 'waveform', 'virality',
+            'aims_id', 'aims_status', 'waveform', 'virality', 'preview_url',
         ]
         read_only_fields = ['cover_image']
 
     def get_genre_names(self, obj):
         return [genre.name for genre in obj.genres.all()]
 
+    def get_preview_url(self, obj):
+        # signed, expiring URL from the private bucket (AWS_QUERYSTRING_AUTH)
+        audio = obj.file_mp3 or obj.file_wav
+        return audio.url if audio else None
+
+
+class SyncListTrackDetailSerializer(TrackSerializer):
+    # sync lists don't expose the audio preview
+    preview_url = None
+
+    class Meta(TrackSerializer.Meta):
+        fields = [f for f in TrackSerializer.Meta.fields if f != 'preview_url']
+
 
 class SyncListTrackSerializer(serializers.ModelSerializer):
-    track = TrackSerializer(read_only=True)
+    track = SyncListTrackDetailSerializer(read_only=True)
     
     class Meta:
         model = SyncListTrack
