@@ -171,3 +171,59 @@ class TrackCommercialUseTests(TestCase):
         data = TrackSerializer(track).data
         self.assertEqual(data["youtube_restriction"], "Restricted in some regions")
         self.assertEqual(data["archival"], 2025)
+
+
+@override_settings(
+    STORAGES={
+        "default": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+            "OPTIONS": {
+                "access_key": "test",
+                "secret_key": "test",
+                "bucket_name": "private-bucket",
+                "region_name": "us-east-1",
+                "endpoint_url": "https://s3.us-east-1.amazonaws.com",
+                "querystring_auth": True,
+            },
+        },
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    },
+)
+class TrackPreviewUrlTests(TestCase):
+    def setUp(self):
+        with (
+            patch("artist.signals.load_spotify_artist_data", return_value=True),
+            patch("artist.signals.request_contract_signature_task.delay", return_value=None),
+        ):
+            artist = Artist.objects.create(name="Some Artist")
+
+        with (
+            patch("catalog.models.load_spotify_id.delay", return_value=None),
+            patch("catalog.models.load_chartmetric_ids.delay", return_value=None),
+        ):
+            self.track = Track.objects.create(artist=artist, isrc="USEE10001997", name="Track")
+
+    def test_preview_url_is_signed_url_preferring_mp3(self):
+        self.track.file_wav.name = "audio/track.wav"
+        self.track.file_mp3.name = "audio/track.mp3"
+
+        data = TrackSerializer(self.track).data
+
+        self.assertTrue(data["preview_url"].startswith("https://"))
+        self.assertIn("audio/track.mp3", data["preview_url"])
+        self.assertIn("Signature=", data["preview_url"])
+        self.assertIn("Expires=", data["preview_url"])
+        self.assertNotIn("file_wav", data)
+        self.assertNotIn("file_mp3", data)
+
+    def test_preview_url_falls_back_to_wav(self):
+        self.track.file_wav.name = "audio/track.wav"
+
+        data = TrackSerializer(self.track).data
+
+        self.assertIn("audio/track.wav", data["preview_url"])
+
+    def test_preview_url_is_null_without_audio(self):
+        data = TrackSerializer(self.track).data
+
+        self.assertIsNone(data["preview_url"])
