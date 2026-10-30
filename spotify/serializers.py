@@ -9,3 +9,13 @@ class TrackPreviewSerializer(serializers.Serializer):
     image = serializers.URLField(required=False, allow_blank=True)
     spotify_url = serializers.URLField()
     duration = serializers.IntegerField()
+
+
+class TrackSearchResultSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=250)
+    artist = serializers.CharField(max_length=250)
+    image = serializers.URLField(required=False, allow_blank=True)
+    spotify_url = serializers.URLField()
+    spotify_id = serializers.CharField(max_length=50)
+    isrc = serializers.CharField(max_length=12, allow_null=True)
+    duration = serializers.IntegerField()

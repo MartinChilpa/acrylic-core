@@ -41,6 +41,7 @@ router.register('teams', club_views.TeamViewSet, basename='teams')
 
 # spotify views
 router.register('spotify/track/preview', spotify_views.TrackPreviewViewSet, basename='simple')
+router.register('spotify/search', spotify_views.TrackSearchViewSet, basename='spotify-search')
 
 # global account
 router.register('account', account_views.AccountViewSet)
