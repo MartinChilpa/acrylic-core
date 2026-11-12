@@ -99,6 +99,56 @@ class TrackFavorite(BaseModel):
         return f"{self.club_id}:{self.track_id}"
 
 
+class Project(BaseModel):
+    """A club-owned collection of tracks the club has already saved.
+
+    This model already existed in deployed databases. ProjectTrack adds the
+    saved-track grouping without changing existing project records.
+    """
+
+    club = models.ForeignKey(Club, related_name="projects", on_delete=models.CASCADE)
+    name = models.CharField(max_length=150)
+    description = models.TextField(blank=True, default="")
+    slug = models.SlugField(max_length=160, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["-created"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["club", "slug"],
+                name="unique_project_slug_per_club",
+                condition=~Q(slug=""),
+            ),
+        ]
+        indexes = BaseModel.Meta.indexes + [
+            models.Index(fields=["club", "name"], name="club_projec_club_id_15ca2d_idx"),
+            models.Index(fields=["club", "slug"], name="club_projec_club_id_2383b7_idx"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.club_id}:{self.name}"
+
+
+class ProjectTrack(BaseModel):
+    """A track included in a project."""
+
+    project = models.ForeignKey(Project, related_name="project_tracks", on_delete=models.CASCADE)
+    track = models.ForeignKey(Track, related_name="project_tracks", on_delete=models.CASCADE)
+
+    class Meta:
+        ordering = ["-created"]
+        constraints = [
+            models.UniqueConstraint(fields=["project", "track"], name="unique_project_track")
+        ]
+        indexes = BaseModel.Meta.indexes + [
+            models.Index(fields=["project", "track"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.project_id}:{self.track_id}"
+
+
 class TrackPublishedLink(BaseModel):
     class Platform(models.TextChoices):
         INSTAGRAM = "instagram", "Instagram"

@@ -2,7 +2,8 @@ from django.db import IntegrityError, transaction
 from rest_framework import serializers
 
 from catalog.models import Track
-from club.models import Club, Player, TrackFavorite, TrackPublishedLink
+from catalog.serializers import TrackSerializer
+from club.models import Club, Player, Project, ProjectTrack, TrackFavorite, TrackPublishedLink
 
 
 class TeamConfigSerializer(serializers.ModelSerializer):
@@ -162,6 +163,36 @@ class TrackFavoriteSerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(obj.track.cover_image.url)
             return obj.track.cover_image.url
         return ""
+
+
+class ProjectTrackSerializer(serializers.ModelSerializer):
+    track = TrackSerializer(read_only=True)
+
+    class Meta:
+        model = ProjectTrack
+        fields = ("uuid", "track", "created")
+        read_only_fields = fields
+
+
+class ProjectSerializer(serializers.ModelSerializer):
+    tracks = ProjectTrackSerializer(source="project_tracks", many=True, read_only=True)
+    track_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Project
+        fields = (
+            "uuid",
+            "name",
+            "description",
+            "track_count",
+            "tracks",
+            "created",
+            "updated",
+        )
+        read_only_fields = ("uuid", "track_count", "tracks", "created", "updated")
+
+    def get_track_count(self, obj: Project) -> int:
+        return obj.project_tracks.count()
 
 
 class TrackPublishedLinkSerializer(serializers.ModelSerializer):

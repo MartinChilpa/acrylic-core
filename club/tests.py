@@ -65,6 +65,39 @@ class TrackFavoriteEndpointTests(APITestCase):
         self.assertEqual(club.track_favorites.count(), 0)
 
 
+class ClubProjectEndpointTests(APITestCase):
+    def test_create_list_project_and_add_saved_track(self):
+        user = get_user_model().objects.create(username="project-admin", email="project@example.com")
+        Club.objects.create(club_name="Project Club", slug="project-club", user=user)
+        artist = Artist.objects.create(name="Project Artist", country="MX")
+        track = Track.objects.create(artist=artist, isrc="USE100000002", name="Project Track")
+        self.client.force_authenticate(user)
+
+        create_response = self.client.post(
+            "/api/v1/my-club/projects/",
+            {"name": "Matchday playlist", "description": "Tracks for home games"},
+            format="json",
+        )
+
+        self.assertEqual(create_response.status_code, 201)
+        project_uuid = create_response.json()["uuid"]
+        add_response = self.client.post(
+            f"/api/v1/my-club/projects/{project_uuid}/tracks/",
+            {"track_uuid": str(track.uuid)},
+            format="json",
+        )
+
+        self.assertEqual(add_response.status_code, 201)
+        self.assertTrue(add_response.json()["added"])
+        list_response = self.client.get("/api/v1/my-club/projects/")
+
+        self.assertEqual(list_response.status_code, 200)
+        project = list_response.json()["results"][0]
+        self.assertEqual(project["name"], "Matchday playlist")
+        self.assertEqual(project["track_count"], 1)
+        self.assertEqual(project["tracks"][0]["track"]["uuid"], str(track.uuid))
+
+
 class TeamConfigEndpointTests(APITestCase):
     def test_get_team_config_by_slug(self):
         Club.objects.create(
