@@ -8,10 +8,11 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from catalog.models import Track
-from club.models import Club, TrackFavorite, TrackPublishedLink
+from club.models import Club, Project, ProjectTrack, TrackFavorite, TrackPublishedLink
 from club.serializers import (
     TeamConfigSerializer,
     TeamPlayerSerializer,
+    ProjectSerializer,
     TrackFavoriteSerializer,
     TrackPublishedLinkSerializer,
 )
@@ -56,6 +57,80 @@ class ClubFavoritesViewSet(viewsets.GenericViewSet):
             TrackFavorite.objects.create(club=user.club, track=track)
 
         return Response({"is_favorited": not is_favorited})
+
+
+class ClubProjectViewSet(viewsets.ModelViewSet):
+    """Manage a club's projects and add tracks to them."""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = ProjectSerializer
+    lookup_field = "uuid"
+    http_method_names = ["get", "post", "patch", "delete", "head", "options"]
+
+    def get_club(self):
+        return getattr(self.request.user, "club", None)
+
+    def get_queryset(self):
+        club = self.get_club()
+        if club is None:
+            return Project.objects.none()
+        return Project.objects.filter(club=club).prefetch_related(
+            "project_tracks__track__artist",
+            "project_tracks__track__price",
+            "project_tracks__track__tags",
+            "project_tracks__track__genres",
+            "project_tracks__track__additional_main_artists",
+            "project_tracks__track__featured_artists",
+        )
+
+    def list(self, request, *args, **kwargs):
+        if self.get_club() is None:
+            return Response(
+                {"detail": "No club found for this user."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({"count": queryset.count(), "results": serializer.data})
+
+    def create(self, request, *args, **kwargs):
+        club = self.get_club()
+        if club is None:
+            return Response(
+                {"detail": "No club found for this user."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        project = serializer.save(club=club)
+        return Response(
+            self.get_serializer(project).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(detail=True, methods=["post"], url_path="tracks")
+    def add_track(self, request, *args, **kwargs):
+        project = self.get_object()
+        track_uuid = request.data.get("track_uuid")
+        if not track_uuid:
+            return Response(
+                {"detail": "track_uuid is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        track = get_object_or_404(Track, uuid=track_uuid)
+        project_track, created = ProjectTrack.objects.get_or_create(
+            project=project,
+            track=track,
+        )
+        return Response(
+            {
+                "uuid": str(project_track.uuid),
+                "track_uuid": str(track.uuid),
+                "added": created,
+            },
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
 
 
 class ClubPublishedLinkViewSet(viewsets.ModelViewSet):
